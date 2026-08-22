@@ -30,7 +30,7 @@ Decisive tradeoff vs Automerge/OT/custom: language constraint (Python engine) + 
 - Textarea↔Y.Text binding bugs (caret jumps) → hand-rolled binding ~60 LOC with `beforeinput` mapping; worst case degrade to whole-doc replace ops.
 
 ## Reversibility
-Moderate: the realtime protocol (realtime-protocol.md) isolates transport from the CRDT; swapping CRDT libs touches one module.
+Moderate: the realtime protocol (../specs/realtime-protocol.md) isolates transport from the CRDT; swapping CRDT libs touches one module.
 
 ## Consequences
 - `backend/src/core/collaboration/` + `backend/src/realtime/`; concurrency tests in tests/concurrency simulate 2 clients: concurrent inserts, disconnect/reconnect, out-of-order, duplicate ops.

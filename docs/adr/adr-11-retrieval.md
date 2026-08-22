@@ -5,7 +5,7 @@
 ## Decision
 **Hybrid retrieval: Chroma embedded (`PersistentClient(path=data/vectordb)`) + sentence-transformers `all-MiniLM-L6-v2` (local, 384-dim, offline; pre-downloaded to data/models at H0) + SQLite FTS5 keyword surface — fused, then filtered by version/provenance, then reranked, then returned WITH citations.**
 
-Pipeline (the spec of record, retrieval-spec.md):
+Pipeline (the spec of record, ../specs/retrieval-spec.md):
 `query → FTS5 keyword candidates ∪ vector kNN candidates → filter by branch/commit-ancestry/provenance → rerank (0.6 vector + 0.3 keyword + 0.1 source-diversity) → cited SearchResult[]`.
 
 **Diff-fed delta reindex:** on commit C, the ADR-04 aligner computes changed sentence ids; only chunks containing changed sids are deleted+upserted. Never re-embed the corpus. Each chunk carries `{artifact_id, branch, introduced_in_commit, replaces_chunk_ids, sid_range}` — so every hit answers "where did this come from".

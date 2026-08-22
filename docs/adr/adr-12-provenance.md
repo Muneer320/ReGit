@@ -29,4 +29,4 @@ Sentinel convention feels artificial — mitigated by showing it working on real
 High: edges are additive rows; a richer claim model can supersede sentinels without schema loss.
 
 ## Consequences
-`backend/src/provenance/{claims.py,edges.py}`; provenance-spec.md is the spec; tests assert chain integrity across branch+merge.
+`backend/src/provenance/{claims.py,edges.py}`; ../specs/provenance-spec.md is the spec; tests assert chain integrity across branch+merge.

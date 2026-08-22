@@ -1,6 +1,6 @@
 # ADR-10: Realtime protocol
 
-- **Status: LOCKED** · Owner: Muneer · Full wire spec in realtime-protocol.md
+- **Status: LOCKED** · Owner: Muneer · Full wire spec in ../specs/realtime-protocol.md
 
 ## Decision
 **WebSocket per (workspace) room, yjs sync protocol (state-vector exchange + binary update messages) via pycrdt-websocket on the server and y-websocket in the browser, plus awareness messages for presence. Server persists every update to `crdt_ops` (append-only op log per (artifact,branch)) before broadcasting.**
@@ -20,4 +20,4 @@ pycrdt-websocket room management API drift → pin at H0, wrap in our own thin `
 Moderate: protocol spec is documented standalone; a different CRDT could speak the same room/persist/broadcast shell.
 
 ## Consequences
-`backend/src/realtime/ws.py` + `realtime-protocol.md` message catalog; tests/concurrency replays recorded op logs.
+`backend/src/realtime/ws.py` + `specs/realtime-protocol.md` message catalog; tests/concurrency replays recorded op logs.

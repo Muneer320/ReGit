@@ -4,7 +4,13 @@
 
 A research-native version control system: typed artifacts (prose, LLM chat exports, PDFs, codebases), content-addressed immutable history, sentence-level semantic diff and 3-way merge, CRDT live collaboration, provenance as a first-class primitive, and version-aware retrieval. No LLM in any correctness path.
 
-**Status: architecture locked, scaffold in place.** See `docs/architecture.md` (system), `docs/adr-*.md` (14 decisions with tradeoffs), `docs/data-model.md` (schemas+invariants), specs at repo root, `12h-execution-plan.md`, `ownership-matrix.md`, `demo-script.md`, `judge-qa.md`, `failure-playbook.md`.
+**Status: architecture locked, scaffold in place.** Docs live in [`docs/`](docs/):
+- [`docs/architecture.md`](docs/architecture.md) — locked system architecture + diagram + layer boundaries
+- [`docs/adr/`](docs/adr/) — 14 Architecture Decision Records (object-model, content-addressing, version-graph, diff, merge, crdt, backend, frontend, database, realtime-protocol, retrieval, provenance, deployment, ai-integration)
+- [`docs/data-model.md`](docs/data-model.md) — exact schemas + core invariants
+- [`docs/specs/`](docs/specs/) — API contract, realtime protocol, versioning/diff/merge/collaboration/provenance/retrieval/ingestion specs
+- [`docs/planning/`](docs/planning/) — 12h execution plan, mvp/target/stretch, testing plan, failure playbook, ownership matrix
+- [`docs/demo/`](docs/demo/) — demo script, judge Q&A
 
 ## Quick start
 ```bash

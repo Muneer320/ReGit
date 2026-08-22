@@ -34,4 +34,4 @@ Sentence splitter edge cases (abbreviations) — accepted crudeness, determinist
 High: per-kind dispatch means any single differ can be swapped (e.g., add difflib fast path) without touching others.
 
 ## Consequences
-- `core/diff/align.py` is THE shared primitive; `diff-spec.md` fixes exact output schemas; pytest asserts exact JSON on fixtures (determinism is a demo requirement).
+- `core/diff/align.py` is THE shared primitive; `specs/diff-spec.md` fixes exact output schemas; pytest asserts exact JSON on fixtures (determinism is a demo requirement).

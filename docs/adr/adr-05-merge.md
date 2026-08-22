@@ -35,5 +35,5 @@ Alignment instability creating spurious conflicts — mitigated by the 0.7 simil
 Moderate: merge engine is a pure function `merge_prose(base, ours, theirs) -> MergeResult`; swappable.
 
 ## Consequences
-- `core/merge/three_way.py` + `merge-spec.md` decision table is the spec of record.
+- `core/merge/three_way.py` + `specs/merge-spec.md` decision table is the spec of record.
 - Conflict UI (Amrit) consumes `GET /merge/:id` + `POST /merge/:id/resolve`.
