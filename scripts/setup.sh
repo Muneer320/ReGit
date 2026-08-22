@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# H0 setup: venv, deps, embedding model pre-download, gr init. Idempotent.
+# ReGit setup (uv-native): sync deps, pre-download embedding model, init store. Idempotent.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-python3 -m venv .venv
-. .venv/bin/activate
-pip install --disable-pip-version-check -r requirements.txt
+
+# Dependencies come from pyproject.toml (uv.lock is the resolved lockfile).
+uv sync
+
 mkdir -p data/objects data/models
-python - <<'PY'
+
+# Pre-download the embedding model so retrieval runs offline at demo time.
+uv run python - <<'PY'
 from sentence_transformers import SentenceTransformer
 SentenceTransformer("all-MiniLM-L6-v2", cache_folder="data/models")
 print("model cached")
 PY
-python -m backend.src.cli init
+
+uv run python -m backend.src.cli init
 echo "setup complete"

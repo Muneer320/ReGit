@@ -3,7 +3,7 @@
 - **Status: LOCKED** · Owner: Amrit
 
 ## Decision
-**Local-first: one `uvicorn` process on localhost serving API+WS+static client; zero network required at demo time.** All JS vendored, embedding model pre-cached, fixtures in repo. Repo ships `requirements.txt` + `scripts/setup.sh` (venv, install, model download, `gr init`) so a fresh laptop can reproduce.
+**Local-first: one `uvicorn` process on localhost serving API+WS+static client; zero network required at demo time.** All JS vendored, embedding model pre-cached, fixtures in repo. Repo deps come from `pyproject.toml` (uv-managed, `uv.lock`); `scripts/setup.sh` (uv sync, model download, `gr init`) reproduces on a fresh laptop.
 
 Fallback ladder (../planning/failure-playbook.md): deployment env fails → run from repo venv → API/CLI demo without frontend → deterministic offline scripts (op-log replay, fixture diffs).
 

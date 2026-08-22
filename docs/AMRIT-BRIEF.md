@@ -10,8 +10,7 @@ You own the **product surface, frontend client, and demo presentation**. Muneer 
 ```bash
 cd ~/git-for-research   # the repo is ReGit; local checkout dir may still be ~/git-for-research
 git pull origin main
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+uv sync   # installs all deps from pyproject.toml into .venv (uv-managed)
 ```
 All frontend code is **React 18 + TypeScript + Vite** (ADR-08) — build with `npm run dev` (dev proxy → backend) or `npm run build`. No vanilla-DOM hand-rolling; components are reusable.
 
