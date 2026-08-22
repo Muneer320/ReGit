@@ -1,32 +1,43 @@
-import { useState } from 'react'
-import { api } from './lib/api'
-import './App.css'
+import { AppProvider } from './state/store'
+import { AppShell } from './components/AppShell'
+import { Toasts } from './components/ui'
+import { useRoute } from './lib/router'
+import { WorkspacePage } from './pages/WorkspacePage'
+import { ArtifactPage } from './pages/ArtifactPage'
+import { HistoryPage } from './pages/HistoryPage'
+import { DiffPage } from './pages/DiffPage'
+import { MergePage } from './pages/MergePage'
+import { SearchPage } from './pages/SearchPage'
 
-function App() {
-  const [status, setStatus] = useState('not-checked')
+function Routes() {
+  const route = useRoute()
+  const [first, second] = route.segments
 
-  const ping = async () => {
-    try {
-      const res = await api.health()
-      setStatus(res.status)
-    } catch (e: any) {
-      setStatus(`ERR ${e?.message ?? e}`)
+  if (first === 'search') return <SearchPage />
+  if (first === 'art' && second) {
+    const id = decodeURIComponent(second)
+    switch (route.segments[2]) {
+      case 'history':
+        return <HistoryPage artifactId={id} />
+      case 'diff':
+        return <DiffPage artifactId={id} />
+      case 'merge':
+        return <MergePage artifactId={id} />
+      default:
+        return <ArtifactPage artifactId={id} />
     }
   }
+  return <WorkspacePage />
+}
 
+function App() {
   return (
-    <div className="app">
-      <h1>ReGit</h1>
-      <p className="tagline">
-        Research-native version control — what if Git had been designed for research instead of code?
-      </p>
-      <button onClick={ping}>Check backend</button>
-      <pre className="status">backend: {status}</pre>
-      <p className="hint">
-        Screens to be built: Workspace · Editor (2-pane) · History · Diff · Conflicts · Search.
-        See <code>docs/AMRIT-BRIEF.md</code>.
-      </p>
-    </div>
+    <AppProvider>
+      <AppShell>
+        <Routes />
+      </AppShell>
+      <Toasts />
+    </AppProvider>
   )
 }
 

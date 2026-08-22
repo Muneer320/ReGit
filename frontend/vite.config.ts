@@ -11,6 +11,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8377',
         changeOrigin: true,
+        ws: true, // WS /api/collaborate/:artifact_id upgrades
       },
       '/ws': {
         target: 'ws://localhost:8377',
