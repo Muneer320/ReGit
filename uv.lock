@@ -726,56 +726,6 @@ wheels = [
 ]
 
 [[package]]
-name = "git-for-research"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "chromadb" },
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "pycrdt" },
-    { name = "pycrdt-websocket" },
-    { name = "pypdf" },
-    { name = "sentence-transformers" },
-    { name = "tree-sitter" },
-    { name = "tree-sitter-python" },
-    { name = "uvicorn", extra = ["standard"] },
-    { name = "websockets" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "chromadb" },
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "httpx" },
-    { name = "pycrdt", specifier = ">=0.14" },
-    { name = "pycrdt-websocket" },
-    { name = "pypdf" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'" },
-    { name = "sentence-transformers" },
-    { name = "tree-sitter" },
-    { name = "tree-sitter-python" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
-    { name = "websockets" },
-]
-provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.16.4" }]
-
-[[package]]
 name = "googleapis-common-protos"
 version = "1.75.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2708,6 +2658,56 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/52/0e/cea4ce73bc0a8247a0748228ae6669984c7e1f8134b6fa66e59c0572e0ea/regex-2026.7.19-cp314-cp314t-win_amd64.whl", hash = "sha256:c639ea314df70a7b2811e8020448c75af8c9445f5a60f8a4ced81c306a9380c2", size = 283763, upload-time = "2026-07-19T00:19:44.644Z" },
     { url = "https://files.pythonhosted.org/packages/6f/b6/26e41975febae63b7a6e3e02f32cff6cff2e4f10d19c929082f56aebf7c6/regex-2026.7.19-cp314-cp314t-win_arm64.whl", hash = "sha256:9a15e785f244f3e07847b984ce8773fc3da10a9f3c131cc49a4c5b4d672b4547", size = 283451, upload-time = "2026-07-19T00:19:46.639Z" },
 ]
+
+[[package]]
+name = "regit"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "chromadb" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "pycrdt" },
+    { name = "pycrdt-websocket" },
+    { name = "pypdf" },
+    { name = "sentence-transformers" },
+    { name = "tree-sitter" },
+    { name = "tree-sitter-python" },
+    { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "chromadb" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx" },
+    { name = "pycrdt", specifier = ">=0.14" },
+    { name = "pycrdt-websocket" },
+    { name = "pypdf" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'" },
+    { name = "sentence-transformers" },
+    { name = "tree-sitter" },
+    { name = "tree-sitter-python" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+    { name = "websockets" },
+]
+provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ruff", specifier = ">=0.16.4" }]
 
 [[package]]
 name = "requests"
