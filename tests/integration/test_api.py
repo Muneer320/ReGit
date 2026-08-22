@@ -140,7 +140,7 @@ def test_diff_real_for_md(client):
         "branch": "main", "content": "Alpha beta. Epsilon zeta.", "message": "edit",
     }, headers=hdr()).json()["commit_id"]
 
-    d = client.get(f"/api/diff", params={"artifact_id": art, "from": c0, "to": c1})
+    d = client.get("/api/diff", params={"artifact_id": art, "from": c0, "to": c1})
     assert d.status_code == 200
     body = d.json()
     assert body["kind"] == "md"
@@ -148,7 +148,7 @@ def test_diff_real_for_md(client):
     assert any(c["status"] in {"edited", "added", "deleted", "unchanged", "moved"} for c in body["changes"])
 
     # same from/to -> 400
-    assert client.get(f"/api/diff", params={"artifact_id": art, "from": c0, "to": c0}).status_code == 400
+    assert client.get("/api/diff", params={"artifact_id": art, "from": c0, "to": c0}).status_code == 400
 
 
 def test_ingest_multipart_and_provenance(client):
@@ -222,20 +222,77 @@ def test_unknown_ingest_type_400(client):
     assert r.json()["error"]["code"] == "UNKNOWN_TYPE"
 
 
-def test_search_stub_returns_501_and_empty_query_400(client):
+def test_search_empty_query_400_and_real_results(client):
+    """Search engine landed (retrieval-spec.md): empty query -> 400; a query
+    against an empty store -> 200 with no results (never 501)."""
     assert client.post("/api/search", json={"query": "   "}).status_code == 400
     r = client.post("/api/search", json={"query": "gravity"})
-    assert r.status_code == 501
-    assert r.json()["error"]["code"] == "NOT_IMPLEMENTED"
+    assert r.status_code == 200
+    assert r.json()["results"] == []
 
 
-def test_merge_stub_returns_501(client):
-    art = client.post("/api/artifacts", json={"kind": "md", "title": "a", "content": "x"},
+def test_search_indexes_commits_and_cites(client):
+    """POST /search on an ingested artifact returns cited SearchResults
+    (data-model.md: every hit carries provenance metadata)."""
+    md = b"# Notes\n\nGradient descent diverges when the learning rate is too high.\n"
+    r = client.post("/api/ingest", headers=hdr("userA"),
+                    files={"file": ("notes.md", md, "text/markdown")},
+                    data={"type": "markdown"})
+    assert r.status_code == 201
+    art_id = r.json()["artifact_ids"][0]
+
+    s = client.post("/api/search", json={"query": "gradient descent"})
+    assert s.status_code == 200
+    body = s.json()
+    assert body["results"], "ingested md must be keyword-searchable"
+    hit = body["results"][0]
+    assert hit["artifact_id"] == art_id
+    assert hit["artifact_title"]
+    assert hit["branch"] == "main"
+    assert hit["introduced_in_commit"]
+    assert hit["sid_range"]
+    assert hit["source"] is not None and hit["source"]["type"] == "markdown"
+
+    # as_of the root commit keeps the hit; a nonexistent commit -> 400
+    assert "results" in client.post(
+        "/api/search", json={"query": "gradient descent",
+                              "as_of_commit": hit["introduced_in_commit"]}
+    ).json()
+
+
+def test_merge_clean_path_writes_two_parent_commit(client):
+    """H5 landed: the stub-era 501 assertion is obsolete. A clean merge of
+    two branches with disjoint edits auto-finalizes as a 2-parent merge
+    commit and advances the ours branch (merge-spec.md T7)."""
+    base_txt = "Alpha settled.\n\nBeta original claim.\n\nGamma original claim.\n\nOmega settled."
+    ours_txt = "Alpha settled.\n\nBeta original claim now.\n\nGamma original claim.\n\nOmega settled."
+    theirs_txt = "Alpha settled.\n\nBeta original claim.\n\nGamma original claim later.\n\nOmega settled."
+    art = client.post("/api/artifacts", json={"kind": "md", "title": "a", "content": base_txt},
                       headers=hdr()).json()["artifact_id"]
+    assert client.post("/api/branches", json={"artifact_id": art, "name": "feature"},
+                       headers=hdr()).status_code == 201
+    root = client.get(f"/api/artifacts/{art}").json()["branches"][0]["head"]
+    c_ours = client.post(f"/api/artifacts/{art}/commit", headers=hdr(), json={
+        "branch": "main", "content": ours_txt, "message": "ours", "base_commit": root,
+    }).json()["commit_id"]
+    c_theirs = client.post(f"/api/artifacts/{art}/commit", headers=hdr(), json={
+        "branch": "feature", "content": theirs_txt, "message": "theirs", "base_commit": root,
+    }).json()["commit_id"]
+
     r = client.post("/api/merge", json={"artifact_id": art, "ours_branch": "main",
-                                        "theirs_branch": "main"}, headers=hdr())
-    assert r.status_code == 501
-    assert r.json()["error"]["code"] == "NOT_IMPLEMENTED"
+                                        "theirs_branch": "feature"}, headers=hdr())
+    assert r.status_code == 201
+    body = r.json()
+    assert body["state"] == "clean"
+    assert body["conflicts"] == []
+    assert body["preview_text"] == (
+        "Alpha settled.\n\nBeta original claim now.\n\nGamma original claim later.\n\nOmega settled."
+    )
+    store = client.app.state.store
+    parents = {p[0] for p in store.db.execute(
+        "SELECT parent_id FROM commit_parents WHERE commit_id=?", (body["result_commit_id"],))}
+    assert parents == {c_ours, c_theirs}
+    assert store.head("main", art) == body["result_commit_id"]
 
 
 def test_delete_artifact_tombstones(client):

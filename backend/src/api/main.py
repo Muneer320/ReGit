@@ -14,13 +14,16 @@ Engine status today:
   - parsing + ingest pipeline: IMPLEMENTED (this change).
   - provenance reads: IMPLEMENTED.
   - three-way merge (core/merge/three_way.merge_prose): STUB -> 501.
-  - retrieval/search (retrieval/service.search): STUB -> 501.
+  - retrieval/search (retrieval/service.search): IMPLEMENTED — hybrid
+    FTS5 BM25 + Chroma kNN, delta-reindexed on every commit; degraded to
+    keyword-only when the vector stack is unavailable (retrieval-spec.md).
   - chat/pdf/codebase diff engines, collaboration/WS: STUB -> 501.
 Those stubs raise NotImplementedError which is mapped to 501; we do NOT fake
 responses — the route + contract shape are fixed and the engine slots in later.
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import UTC
 from pathlib import Path
@@ -47,6 +50,7 @@ from ..core.objects.store import BranchExistsError, ObjectStore, RefConflictErro
 from ..ingestion import pipeline
 from ..ingestion.parsers import VALID_TYPES, ParseError
 from ..provenance import service as provenance
+from ..retrieval import indexer as retrieval_indexer
 from ..retrieval import service as retrieval
 
 # ---------------------------------------------------------------------------
@@ -267,6 +271,7 @@ def create_artifact(
             (art_id, kind, body.title, body.source_id, _now()),
         )
     cid = store.commit([], root_hash, art_id, "root", user, kind=kind)
+    _index_commit(store, cid, "main")
     return {"artifact_id": art_id, "root_commit_id": cid}
 
 
@@ -343,6 +348,7 @@ def commit_artifact(
     if created != cid:  # pragma: no cover — defensive; identity must match
         return JSONResponse(status_code=500, content={"error": {
             "code": "IDENTITY_MISMATCH", "message": "commit id mismatch", "commit_id": created}})
+    _index_commit(store, created, body.branch)
     return JSONResponse(
         status_code=200 if exists else 201,
         content={"commit_id": created, "parent_ids": parents},
@@ -540,6 +546,9 @@ async def ingest(
     data = await file.read()
     outcome = pipeline.ingest(store, kind, file.filename or "upload", data, user)
     pipeline.commit_roots(store, outcome, user)
+    for art in outcome.artifacts:
+        if art.commit_id:
+            _index_commit(store, art.commit_id, "main")
     return {
         "source_id": outcome.source_id,
         "artifact_ids": outcome.artifact_ids,
@@ -605,3 +614,16 @@ def _now() -> str:
     from datetime import datetime
 
     return datetime.now(UTC).isoformat()
+
+
+def _index_commit(store: ObjectStore, commit_id: str, branch: str) -> None:
+    """Delta-reindex the retrieval index for a fresh commit (retrieval-spec.md).
+
+    The index is DERIVED data: a failure here must never corrupt the commit
+    response or the object store — log it and let scripts/reindex.py rebuild
+    from the object store. Vector-leg failures degrade inside the indexer.
+    """
+    try:
+        retrieval_indexer.get_indexer(store).reindex(commit_id, branch=branch)
+    except Exception:
+        logging.exception("retrieval index update failed for commit %s", commit_id)
