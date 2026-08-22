@@ -698,6 +698,18 @@ async def collaborate_ws(
     await realtime_ws.collaborate(websocket, artifact_id, branch, user)
 
 
+# Alias so the frontend's WS client (`/api/collaborate/:id`, per api.ts/ws.ts)
+# reaches the same handler as the flat `/collaborate/:id` route.
+@app.websocket("/api/collaborate/{artifact_id}")
+async def collaborate_ws_api_alias(
+    websocket: WebSocket,
+    artifact_id: str,
+    branch: str = "main",
+    user: str = "anonymous",
+) -> None:
+    await realtime_ws.collaborate(websocket, artifact_id, branch, user)
+
+
 # ---------------------------------------------------------------------------
 # Static frontend + health
 # ---------------------------------------------------------------------------
