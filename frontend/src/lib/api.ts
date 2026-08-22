@@ -1,88 +1,307 @@
-// Thin REST client for the ReGit backend (docs/specs/api-contract.md).
-// Base URL comes from Vite's dev proxy (same origin in dev) or the API base.
-const BASE = (import.meta.env.VITE_API_BASE as string) || '/api'
+// ReGit REST client — single source of truth for backend communication
+// (docs/specs/api-contract.md). Every component talks ONLY to this module.
+//
+// Strategy: try the real backend first. Where the engine is still a 501 stub
+// (merge-conflict persistence, resolve, search) or the backend is unreachable,
+// fall back to the local demo adapter in mock.ts and flag the response with
+// `viaMock` so the UI can show it honestly. Contract errors (400/404/409…)
+// always surface as ApiError — never silently swallowed.
+
+import type {
+  Artifact,
+  ArtifactRecord,
+  Change,
+  CommitInfo,
+  DiffResponse,
+  IngestResponse,
+  IngestType,
+  MergeResponse,
+  Resolution,
+  ResolveResponse,
+  SearchResult,
+} from './types'
+import {
+  mockHasMerge,
+  mockMerge,
+  mockResolve,
+  mockSearch,
+  registerArtifacts,
+  registryList,
+} from './mock'
+
+export const API_BASE = (import.meta.env.VITE_API_BASE as string) || '/api'
+
+export class ApiError extends Error {
+  status: number
+  code: string
+  constructor(status: number, code: string, message: string) {
+    super(message)
+    this.status = status
+    this.code = code
+  }
+}
+
+export function currentUser(): string {
+  return localStorage.getItem('regit_user') || 'userA'
+}
+
+export function setCurrentUser(u: string) {
+  localStorage.setItem('regit_user', u)
+}
 
 type Headers = Record<string, string>
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Headers = { 'Content-Type': 'application/json' }
-  // Mock auth: the demo uses two users for presence/concurrency.
-  const user = localStorage.getItem('regit_user') || 'userA'
-  headers['X-User'] = user
+  headers['X-User'] = currentUser()
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'backend unreachable')
+  }
 
   if (!res.ok) {
+    let code = `HTTP_${res.status}`
     let msg = `HTTP ${res.status}`
     try {
       const j = await res.json()
-      msg = j?.error?.message || j?.detail || msg
+      msg = j?.error?.message ?? j?.detail ?? msg
+      code = j?.error?.code ?? code
     } catch {
-      /* non-JSON error body */
+      /* non-JSON body */
     }
-    throw new Error(msg)
+    throw new ApiError(res.status, code, msg)
   }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }
 
-export const api = {
-  health: () => request<{ status: string }>('GET', '/health'),
-
-  // Artifacts
-  listArtifacts: () => request<any[]>('GET', '/artifacts'),
-  getArtifact: (id: string) => request<any>('GET', `/artifacts/${id}`),
-  createArtifact: (body: unknown) => request<any>('POST', '/artifacts', body),
-  deleteArtifact: (id: string) => request<void>('DELETE', `/artifacts/${id}`),
-  commit: (id: string, body: unknown) => request<any>('POST', `/artifacts/${id}/commit`, body),
-  history: (id: string, branch?: string) =>
-    request<any[]>('GET', `/artifacts/${id}/history${branch ? `?branch=${branch}` : ''}`),
-
-  // Branches
-  createBranch: (body: unknown) => request<any>('POST', '/branches', body),
-  listBranches: (artifact_id?: string) =>
-    request<any[]>('GET', `/branches${artifact_id ? `?artifact_id=${artifact_id}` : ''}`),
-  checkout: (body: unknown) => request<any>('POST', '/checkout', body),
-
-  // Diff / merge
-  diff: (artifact_id: string, from: string, to: string) =>
-    request<any>('GET', `/diff?artifact_id=${artifact_id}&from=${from}&to=${to}`),
-  merge: (body: unknown) => request<any>('POST', '/merge', body),
-  resolveMerge: (mergeId: string, body: unknown) =>
-    request<any>('POST', `/merge/${mergeId}/resolve`, body),
-
-  // Ingest / search
-  ingest: (form: FormData) => ingestForm(form),
-  search: (body: unknown) => request<any>('POST', '/search', body),
-
-  // Provenance
-  claim: (id: string) => request<any>('GET', `/provenance/claim/${id}`),
-  artifactSources: (id: string) => request<any>('GET', `/provenance/artifact/${id}/sources`),
-  claimsAtCommit: (commitId: string) => request<any>('GET', `/provenance/at/${commitId}/claims`),
+function isFallback(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 0 || err.status === 501 || err.code === 'NOT_IMPLEMENTED' || err.code === 'NETWORK')
+  )
 }
 
-// Ingest is multipart (no JSON header).
-async function ingestForm(form: FormData): Promise<any> {
-  const user = localStorage.getItem('regit_user') || 'userA'
-  const res = await fetch(`${BASE}/ingest`, { method: 'POST', body: form, headers: { 'X-User': user } })
-  if (!res.ok) {
-    let msg = `HTTP ${res.status}`
-    try {
-      const j = await res.json()
-      msg = j?.error?.message || j?.detail || msg
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg)
+// ---------------------------------------------------------------------------
+// Artifact registry — the locked contract has no "list artifacts" endpoint, so
+// the workspace tracks ids it has seen (ingest/create) and hydrates each one
+// live. If a future backend adds GET /artifacts we prefer it transparently.
+// ---------------------------------------------------------------------------
+const REGISTRY_KEY = 'regit_artifacts'
+
+function registryLoad(): ArtifactRecord[] {
+  try {
+    return JSON.parse(localStorage.getItem(REGISTRY_KEY) || '[]') as ArtifactRecord[]
+  } catch {
+    return []
   }
-  return res.json()
 }
 
-// Global user switcher for the two-tab presence demo.
-export function setUser(u: string) {
-  localStorage.setItem('regit_user', u)
+function registrySave(recs: ArtifactRecord[]) {
+  localStorage.setItem(REGISTRY_KEY, JSON.stringify(recs))
+}
+
+export function registryRegister(recs: ArtifactRecord[]) {
+  const existing = new Map(registryLoad().map((r) => [r.id, r]))
+  for (const r of recs) existing.set(r.id, { ...existing.get(r.id), ...r })
+  registrySave([...existing.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)))
+}
+
+/** List artifacts: real list endpoint if present, else hydrate the registry. */
+async function listArtifacts(): Promise<Artifact[]> {
+  // Preferred path once the backend grows a list endpoint.
+  try {
+    const rows = await request<unknown[]>('GET', '/artifacts')
+    if (Array.isArray(rows)) {
+      const hydrated = await Promise.all(
+        rows.map(async (r: any) => {
+          if (r && typeof r.id === 'string' && r.kind && r.title !== undefined) return r as Artifact
+          return request<Artifact>('GET', `/artifacts/${String(r?.id ?? r)}`).catch(() => null)
+        }),
+      )
+      const ok = hydrated.filter(Boolean) as Artifact[]
+      if (ok.length > 0) return ok
+    }
+  } catch {
+    /* no list endpoint — fall through */
+  }
+  const recs = registryList()
+  const arts = await Promise.all(
+    recs.map(async (r): Promise<Artifact & { __dead?: boolean }> => {
+      try {
+        const a = await request<Artifact>('GET', `/artifacts/${r.id}`)
+        return { ...a, title: a.title || r.title }
+      } catch {
+        return { id: r.id, kind: r.kind, title: r.title, branches: [], source_id: null, __dead: true }
+      }
+    }),
+  )
+  return arts.filter((a) => a.__dead !== true)
+}
+
+// ---------------------------------------------------------------------------
+// Public API surface
+// ---------------------------------------------------------------------------
+export const api = {
+  health: () => request<{ status: string; version?: string }>('GET', '/health'),
+
+  listArtifacts,
+
+  async getArtifact(id: string): Promise<Artifact> {
+    return request<Artifact>('GET', `/artifacts/${id}`)
+  },
+
+  async createArtifact(body: { kind: string; title: string; content?: string }): Promise<{
+    artifact_id: string
+    root_commit_id: string
+  }> {
+    const r = await request<{ artifact_id: string; root_commit_id: string }>(
+      'POST',
+      '/artifacts',
+      body,
+    )
+    registerArtifacts([r.artifact_id], body.title)
+    return r
+  },
+
+  deleteArtifact: (id: string) => request<void>('DELETE', `/artifacts/${id}`),
+
+  commit: (id: string, body: { branch: string; content: string; message: string; base_commit?: string }) =>
+    request<{ commit_id: string; parent_ids: string[] }>(
+      'POST',
+      `/artifacts/${id}/commit`,
+      body,
+    ),
+
+  history: (id: string, branch?: string): Promise<CommitInfo[]> =>
+    request<CommitInfo[]>(
+      'GET',
+      `/artifacts/${id}/history${branch ? `?branch=${encodeURIComponent(branch)}` : ''}`,
+    ),
+
+  createBranch: (body: { artifact_id: string; name: string; from_commit?: string }) =>
+    request<{ name: string; head: string }>('POST', '/branches', body),
+
+  listBranches: (artifactId: string) =>
+    request<{ name: string; head_commit_id: string }[]>(
+      'GET',
+      `/branches?artifact_id=${encodeURIComponent(artifactId)}`,
+    ),
+
+  checkout: (body: { artifact_id: string; branch?: string; commit?: string }) =>
+    request<{ content: string; commit_id: string }>('POST', '/checkout', body),
+
+  diff: async (artifactId: string, from: string, to: string): Promise<DiffResponse> => {
+    try {
+      return await request<DiffResponse>(
+        'GET',
+        `/diff?artifact_id=${encodeURIComponent(artifactId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      )
+    } catch (err) {
+      if (!isFallback(err)) throw err
+      return mockDiff(artifactId, from, to)
+    }
+  },
+
+  merge: async (
+    artifactId: string,
+    oursBranch: string,
+    theirsBranch: string,
+  ): Promise<MergeResponse> => {
+    try {
+      const r = await request<MergeResponse>('POST', '/merge', {
+        artifact_id: artifactId,
+        ours_branch: oursBranch,
+        theirs_branch: theirsBranch,
+      })
+      return r
+    } catch (err) {
+      if (!isFallback(err)) throw err
+      return mockMerge(artifactId, oursBranch, theirsBranch)
+    }
+  },
+
+  resolveMerge: async (mergeId: string, resolutions: Resolution[]): Promise<ResolveResponse> => {
+    // A merge id minted by the local adapter never exists on the backend —
+    // resolving it must go through the adapter, not the 404 path.
+    if (mockHasMerge(mergeId)) return mockResolve(mergeId, resolutions)
+    try {
+      return await request<ResolveResponse>('POST', `/merge/${mergeId}/resolve`, {
+        resolutions,
+      })
+    } catch (err) {
+      if (!isFallback(err)) throw err
+      return mockResolve(mergeId, resolutions)
+    }
+  },
+
+  ingest: async (file: File, type: IngestType): Promise<IngestResponse> => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('type', type)
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE}/ingest`, {
+        method: 'POST',
+        body: form,
+        headers: { 'X-User': currentUser() },
+      })
+    } catch {
+      throw new ApiError(0, 'NETWORK', 'backend unreachable')
+    }
+    if (!res.ok) {
+      let code = `HTTP_${res.status}`
+      let msg = `HTTP ${res.status}`
+      try {
+        const j = await res.json()
+        msg = j?.error?.message ?? j?.detail ?? msg
+        code = j?.error?.code ?? code
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(res.status, code, msg)
+    }
+    const out = (await res.json()) as IngestResponse
+    registerArtifacts(out.artifact_ids, file.name)
+    return out
+  },
+
+  search: async (
+    query: string,
+    opts: { k?: number; branch?: string; as_of_commit?: string; artifact_kind?: string } = {},
+  ): Promise<SearchResult[]> => {
+    try {
+      const r = await request<{ results: SearchResult[] }>('POST', '/search', {
+        query,
+        k: opts.k ?? 8,
+        ...opts,
+      })
+      return r.results ?? []
+    } catch (err) {
+      if (!isFallback(err)) throw err
+      return mockSearch(query, opts)
+    }
+  },
+}
+
+export { registryLoad, registrySave }
+
+// ---------------------------------------------------------------------------
+// Local diff fallback (mirrors align.diff_prose output shape).
+// ---------------------------------------------------------------------------
+async function mockDiff(artifactId: string, from: string, to: string): Promise<DiffResponse> {
+  const [oldC, newC] = await Promise.all([
+    api.checkout({ artifact_id: artifactId, commit: from }),
+    api.checkout({ artifact_id: artifactId, commit: to }),
+  ])
+  const { diffProseLocal } = await import('./mergelocal')
+  const changes: Change[] = diffProseLocal(oldC.content, newC.content, artifactId)
+  return { kind: 'md', changes, viaMock: true }
 }
