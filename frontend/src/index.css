@@ -81,13 +81,14 @@ button { font: inherit; cursor: pointer; background: none; border: none; color: 
 }
 .brand {
   display: flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-weight: 700; font-size: 13px;
   color: var(--heading); letter-spacing: 0.02em;
 }
-.brand-mark {
-  width: 20px; height: 20px; border-radius: 3px;
-  background: var(--heading); color: var(--bg0);
-  display: inline-flex; align-items: center; justify-content: center;
+.brand-logo {
+  display: block;
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0));
 }
 .brand .tagline {
   font-family: var(--sans); font-weight: 400; font-size: 11px;

@@ -13,6 +13,7 @@ import {
   Spinner,
   timeAgo,
 } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 function highlight(text: string, terms: string[]) {
   const clean = terms.filter((t) => t.length > 0)
@@ -89,7 +90,7 @@ export function SearchPage() {
               className="mono faint"
               style={{ position: 'absolute', left: 14, top: 12, fontSize: 13 }}
             >
-              ⌕
+              <Icon name="search" size={14} />
             </span>
             <input
               ref={inputRef}
@@ -149,7 +150,7 @@ export function SearchPage() {
 
       {!error && results && results.length === 0 && !searching && (
         <div className="panel" style={{ marginTop: 12 }}>
-          <EmptyState icon="⌕" title={`No results for “${lastQuery}”`} hint="Try broader terms — the corpus only contains ingested artifacts." />
+           <EmptyState icon="search" title={`No results for “${lastQuery}”`} hint="Try broader terms — the corpus only contains ingested artifacts." />
         </div>
       )}
 
@@ -165,7 +166,8 @@ export function SearchPage() {
 
           {results.map((r) => (
             <article className="result-card" key={r.chunk_id}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                 <span className="result-index">{results.indexOf(r) + 1}</span>
                 <KindBadge kind={r.kind} />
                 <b
                   style={{ color: 'var(--heading)', cursor: 'pointer' }}
@@ -174,9 +176,10 @@ export function SearchPage() {
                 >
                   {r.artifact_title}
                 </b>
-                <Badge variant="branch">⌥ {r.branch}</Badge>
+                 <Badge variant="branch">{r.branch}</Badge>
                 <span style={{ marginLeft: 'auto' }} className="result-score">
-                  {(r.score * 100).toFixed(0)}% match
+                   <span className="result-score-meter"><i style={{ width: `${Math.max(4, Math.min(100, r.score * 100))}%` }} /></span>
+                   {(r.score * 100).toFixed(0)}%
                 </span>
               </div>
 
@@ -221,8 +224,7 @@ export function SearchPage() {
 
       {!results && !error && !searching && (
         <div className="demo-hint" style={{ marginTop: 14 }}>
-          <span>ⓘ</span>
-          <span>
+           <span>
             Search runs against the retrieval engine when available; otherwise a local index over your real artifacts keeps the demo honest (marked “demo adapter”).
           </span>
         </div>

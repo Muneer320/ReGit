@@ -3,6 +3,7 @@ import type { IngestType } from '../lib/types'
 import { api } from '../lib/api'
 import { useApp } from '../state/store'
 import { Spinner } from './ui'
+import { Icon } from './Icon'
 
 const TYPES: { id: IngestType; label: string; exts: string }[] = [
   { id: 'markdown', label: 'Markdown', exts: '.md, .markdown' },
@@ -49,7 +50,7 @@ export function IngestDialog({
         <div className="modal-head">
           <h2>Ingest research source</h2>
           <button className="btn ghost sm" onClick={onClose}>
-            ✕
+             <Icon name="x" size={13} />
           </button>
         </div>
         <div className="modal-body">

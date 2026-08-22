@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { MergeResponse, ResolveResponse } from '../lib/types'
+import { Icon } from './Icon'
 
 /** Strong completion state — the judge must SEE that the merge committed. */
 export function MergeSuccess({
@@ -19,7 +20,7 @@ export function MergeSuccess({
 
   return (
     <div className="merge-success">
-      <span className="check">✓</span>
+       <span className="check"><Icon name="check" size={20} /></span>
       <h2>Merge completed</h2>
       <p className="flow">
         {theirs} → {ours}
@@ -74,7 +75,7 @@ export function OursTheirsHeader({
           <div className="ot-branch">{ours}</div>
           <div className="small faint mono">current branch · kept on conflict “accept ours”</div>
         </div>
-        <div className="ot-arrow">⇄ merge</div>
+         <div className="ot-arrow"><Icon name="merge" size={15} /> merge</div>
         <div className="ot-card theirs">
           <div className="ot-label">Theirs</div>
           <div className="ot-branch">{theirs}</div>
@@ -89,7 +90,7 @@ export function OursTheirsHeader({
 export function ConflictBanner({ count }: { count: number }) {
   return (
     <div className="conflict-banner">
-      <span style={{ fontSize: 20 }}>⑃</span>
+       <Icon name="merge" size={19} />
       <span className="count">{count}</span>
       <span>
         conflict{count === 1 ? '' : 's'} detected

@@ -3,10 +3,12 @@ import type { ReactNode } from 'react'
 import { useApp } from '../state/store'
 import { useRoute, navigate } from '../lib/router'
 import { api } from '../lib/api'
+import { Icon } from './Icon'
+import type { IconName } from './Icon'
 
 const USERS = [
-  { id: 'userA', color: '#4ade80' },
-  { id: 'userB', color: '#7aa2f7' },
+  { id: 'userA', color: '#57c47a' },
+  { id: 'userB', color: '#6ea0f6' },
 ]
 
 export function UserSelector() {
@@ -46,14 +48,14 @@ function NavItem({
   active,
   onClick,
 }: {
-  icon: string
+  icon: IconName
   label: string
   active?: boolean
   onClick: () => void
 }) {
   return (
     <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}>
-      <span className="nav-icon">{icon}</span>
+      <Icon name={icon} />
       {label}
     </button>
   )
@@ -68,14 +70,14 @@ function ArtifactNav({ id }: { id: string }) {
     <>
       <div className="nav-section-label">Artifact</div>
       <NavItem
-        icon="◈"
+        icon="file"
         label="Overview"
         active={!route.path.includes('/history') && !route.path.includes('/diff') && !route.path.includes('/merge')}
         onClick={() => navigate(`/art/${id}${q}`)}
       />
-      <NavItem icon="⌥" label="History" active={route.path.endsWith('/history')} onClick={() => navigate(`/art/${id}/history${q}`)} />
-      <NavItem icon="±" label="Diff" active={route.path.endsWith('/diff')} onClick={() => navigate(`/art/${id}/diff${q}`)} />
-      <NavItem icon="⑃" label="Merge" active={route.path.endsWith('/merge')} onClick={() => navigate(`/art/${id}/merge${q}`)} />
+      <NavItem icon="commit" label="History" active={route.path.endsWith('/history')} onClick={() => navigate(`/art/${id}/history${q}`)} />
+      <NavItem icon="diff" label="Diff" active={route.path.endsWith('/diff')} onClick={() => navigate(`/art/${id}/diff${q}`)} />
+      <NavItem icon="merge" label="Merge" active={route.path.endsWith('/merge')} onClick={() => navigate(`/art/${id}/merge${q}`)} />
     </>
   )
 }
@@ -100,7 +102,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [artId])
 
-  const onWorkspace = route.path === '/' || route.segments[0] === 'workspace'
+  const onDashboard = route.path === '/'
+  const onWorkspace = route.segments[0] === 'repositories' || route.segments[0] === 'workspace'
   const onSearch = route.segments[0] === 'search'
 
   return (
@@ -110,20 +113,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="brand"
           style={{ cursor: 'pointer' }}
           onClick={() => navigate('/')}
-          title="ReGit — research-native version control"
+          title="ReGit — version control for research"
         >
-          <span className="glyph">R</span>
-          ReGit
+          <img src="/regit-wordmark-light-bg.svg" alt="ReGit wordmark" className="brand-logo" />
           <span className="tagline">version control for research</span>
         </span>
         {artId && (
-          <span className="crumb dim">
-            /
-            {title ? (
-              <b style={{ color: 'var(--heading)', fontWeight: 600 }}>{title}</b>
-            ) : (
-              <span className="mono">{artId}</span>
-            )}
+          <span className="crumb">
+            <Icon name="chevron-right" size={11} />
+            {title ?? artId}
           </span>
         )}
         <div className="topbar-spacer" />
@@ -132,16 +130,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <aside className="sidebar">
-        <div className="nav-section-label">Workspace</div>
-        <NavItem icon="⌂" label="Artifacts" active={onWorkspace} onClick={() => navigate('/')} />
-        <NavItem icon="⌕" label="Search" active={onSearch} onClick={() => navigate('/search')} />
+        <div className="nav-section-label" style={{ paddingTop: 2 }}>Workspace</div>
+        <NavItem icon="graph" label="Dashboard" active={onDashboard} onClick={() => navigate('/')} />
+        <NavItem icon="repo" label="Repositories" active={onWorkspace} onClick={() => navigate('/repositories')} />
+        <NavItem icon="search" label="Search" active={onSearch} onClick={() => navigate('/search')} />
         {artId && <ArtifactNav id={artId} />}
-        <div style={{ flex: 1 }} />
-        <div className="nav-section-label">About</div>
-        <p className="faint" style={{ padding: '0 10px', fontSize: 11.5, lineHeight: 1.5 }}>
-          Content-addressed research artifacts. Sentence-level diffs &amp; merges.
-          Every claim traceable to a commit.
-        </p>
+        <div className="sidebar-footnote">
+          Content-addressed artifacts. Sentence-level diffs &amp; merges — every claim traceable to a commit.
+        </div>
       </aside>
 
       <main className="main">{children}</main>

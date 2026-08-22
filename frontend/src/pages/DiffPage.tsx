@@ -32,64 +32,57 @@ function computeStats(changes: Change[]): Stats {
   return s
 }
 
-/** Unified row for one change. */
+/** Unified row for one change. Marker gutter + prose body + sid column. */
 function UnifiedRow({ c }: { c: Change }) {
   if (c.status === 'edited') {
     return (
       <div className="change-row row-edited">
-        <div className="change-gutter">
-          <span>~ mod</span>
-        </div>
+        <div className="change-marker">~</div>
         <div className="change-body change-text">
-          <del style={{ display: 'block', color: 'var(--red)', background: 'rgba(244,114,114,0.08)', padding: '0 3px', borderRadius: 3 }}>
-            {c.old_text}
-          </del>
-          <ins style={{ display: 'block', textDecoration: 'none' }}>
+          <del style={{ display: 'block' }}>{c.old_text}</del>
+          <ins style={{ display: 'block', fontFamily: 'var(--serif)', fontSize: 13 }}>
             {inlineHighlight(c.old_text ?? '', c.new_text ?? '')}
           </ins>
         </div>
+        <div className="change-sid">{c.sid}</div>
       </div>
     )
   }
   if (c.status === 'added') {
     return (
       <div className="change-row row-added">
-        <div className="change-gutter">
-          <span>+ add</span>
-        </div>
-        <div className="change-text">{c.new_text}</div>
+        <div className="change-marker">+</div>
+        <div className="change-body" style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>{c.new_text}</div>
+        <div className="change-sid">{c.sid}</div>
       </div>
     )
   }
   if (c.status === 'deleted') {
     return (
       <div className="change-row row-deleted">
-        <div className="change-gutter">
-          <span>− del</span>
-        </div>
-        <div className="change-text" style={{ textDecoration: 'line-through', textDecorationColor: 'rgba(244,114,114,0.55)' }}>
-          {c.old_text}
-        </div>
+        <div className="change-marker">&minus;</div>
+        <div className="change-text change-body" style={{ fontFamily: 'var(--serif)', fontSize: 13 }}>{c.old_text}</div>
+        <div className="change-sid">{c.sid}</div>
       </div>
     )
   }
   if (c.status === 'moved') {
     return (
       <div className="change-row row-moved">
-        <div className="change-gutter">
-          <span>↦ mov</span>
-        </div>
+        <div className="change-marker">&rarr;</div>
         <div className="change-body">
           {c.old_text}
           <span className="faint small" style={{ marginLeft: 8 }}>moved position, content unchanged</span>
         </div>
+        <div className="change-sid">{c.sid}</div>
       </div>
     )
   }
   return (
     <div className="change-row row-unchanged">
-      <div className="change-gutter" />
-      <div className="change-body">{c.old_text}</div>
+      <div className="change-marker" />
+      <div className="change-body" style={{ fontFamily: 'var(--serif)' }}>{c.old_text}</div>
+      <div className="change-sid">{c.sid}</div>
     </div>
   )
 }
@@ -178,7 +171,7 @@ export function DiffPage({ artifactId }: { artifactId: string }) {
           </p>
         </div>
         <div className="btn-row">
-          {branch && <Badge variant="branch">⌥ {branch}</Badge>}
+          {branch && <Badge variant="branch">{branch}</Badge>}
           <BranchSelector
             artifactId={artifactId}
             value={branch}
@@ -281,7 +274,7 @@ export function DiffPage({ artifactId }: { artifactId: string }) {
             </div>
 
             {diff.changes.length === 0 && (
-              <EmptyState icon="✓" title="No differences" hint="These two versions are semantically identical." />
+              <EmptyState icon="check" title="No differences" hint="These two versions are semantically identical." />
             )}
 
             {mode === 'unified' ? (
@@ -298,7 +291,7 @@ export function DiffPage({ artifactId }: { artifactId: string }) {
 
         {!loading && !error && !diff && defaultFrom === null && history && history.length <= 1 && (
           <EmptyState
-            icon="±"
+            icon="diff"
             title="Nothing to diff yet"
             hint="This branch has a single commit — commit a change (or pick two commits) to see a sentence-level diff."
           />
