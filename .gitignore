@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg
+
+# Data / runtime artifacts (local demo store — committed sample fixtures live in scripts/fixtures)
+data/db/
+data/objects/
+data/vectordb/
+data/models/
+*.db
+*.sqlite3
+
+# Frontend (vendored; no build output expected, safety net)
+frontend/dist/
+node_modules/
+
+# Env / secrets
+.env
+.env.local
+*.pem
+
+# Test / cache / logs
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+logs/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
