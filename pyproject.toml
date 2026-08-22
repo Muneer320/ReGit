@@ -1,5 +1,5 @@
 [project]
-name = "git-for-research"
+name = "ReGit"
 version = "0.1.0"
 description = "Research-native version control: content-addressed immutable artifacts, semantic diff/merge, CRDT collaboration, provenance, version-aware retrieval."
 readme = "README.md"
@@ -27,7 +27,7 @@ dev = [
 [tool.uv]
 # This is a monorepo-style app (backend/, frontend/, shared/, data/, scripts/),
 # not a single installable package — uv should manage the venv + deps (e.g.
-# `uv add`, `uv run`, `uv sync`) WITHOUT trying to build/install "git-for-research"
+# `uv add`, `uv run`, `uv sync`) WITHOUT trying to build/install "ReGit"
 # itself. The backend runs as a path-mapped app (pytest has pythonpath=["."]).
 package = false
 

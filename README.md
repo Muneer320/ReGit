@@ -1,4 +1,4 @@
-# Git for Research
+# ReGit
 
 > What if Git had been designed for research instead of source code?
 

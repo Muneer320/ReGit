@@ -1,4 +1,4 @@
-"""Core data model types for Git for Research.
+"""Core data model types for ReGit.
 
 Mirrors docs/data-model.md exactly. Content-addressed ids are hex SHA-256;
 relational ids use prefixed ULIDs. Keep in sync with the spec.

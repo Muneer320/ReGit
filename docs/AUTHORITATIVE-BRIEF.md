@@ -1,4 +1,4 @@
-# Git for Research — AUTHORITATIVE Operating Brief (13h hackathon)
+# ReGit — AUTHORITATIVE Operating Brief (13h hackathon)
 
 Team: Muneer = Principal Systems Engineer / Technical Lead · Amrit = Product & Integration Engineer. AI agents = implementation multiplier. Humans own engineering judgment, architecture, validation, and the ability to explain the system to judges.
 
@@ -137,7 +137,7 @@ This is higher priority than anything else in this file.
 2. Extract requirements (organizer / research / assumptions / strategic decisions — keep them clearly separated; do not silently invent requirements).
 3. Research the hardest architectural uncertainties (CRDT choice, merge base + 3-way, content addressing, provenance as primitive, retrieval pipeline, per-artifact diff). Use web research for validation; cite tool/library maturity.
 4. Produce the recommended architecture + full ownership plan (Muneer/Amrit/AI) + identify the critical path.
-5. Write the decision artifacts to disk as markdown under /home/foaly/git-for-research/: ADRs, data-model, api-contract, realtime-protocol, versioning/diff/merge/collaboration/provenance/retrieval/ingestion specs, 12h-execution-plan, ownership-matrix, testing-plan, demo-script, judge-qa, failure-playbook, architecture.md.
+5. Write the decision artifacts to disk as markdown under /home/foaly/ReGit/: ADRs, data-model, api-contract, realtime-protocol, versioning/diff/merge/collaboration/provenance/retrieval/ingestion specs, 12h-execution-plan, ownership-matrix, testing-plan, demo-script, judge-qa, failure-playbook, architecture.md.
 6. For EVERY major decision state: recommendation, runner-up, decisive tradeoff.
 7. Do NOT write 30,000 words and declare victory. Production is decisions + working skeleton stubs where feasible. But the PRIMARY deliverable of THIS run is the locked architecture + ownership plan + critical path + starting codebase scaffold, because the humans must review architecture before heavy implementation.
 8. Verify you actually wrote each file (stat it) before reporting done. Report: files written, the critical path, the Muneer vs Amrit vs AI split, and the top 3 unknowns that need human decisions right now.

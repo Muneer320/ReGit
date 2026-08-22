@@ -1,14 +1,14 @@
-# Amrit — Frontend / Product & Integration Brief (Git-for-Research)
+# Amrit — Frontend / Product & Integration Brief (ReGit)
 
 You own the **product surface, frontend client, and demo presentation**. Muneer builds the engine (object store, alignment, merge, CRDT); your job is to make it visible, usable, and demoable. This doc is exact — file paths, commands, contract references. Work in parallel with Muneer; you do NOT need to touch the versioning/diff/merge core.
 
-**GitHub:** `Muneer320/git-for-research` (you're a collaborator — accept the invite)
+**GitHub:** `Muneer320/ReGit` (you're a collaborator — accept the invite)
 **Branch:** `main` — pull before you start, commit to `main` (short hackathon, no PR ceremony).
 
 ---
 ## 0. Environment — one time
 ```bash
-cd ~/git-for-research
+cd ~/git-for-research   # the repo is ReGit; local checkout dir may still be ~/git-for-research
 git pull origin main
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
