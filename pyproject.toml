@@ -16,6 +16,7 @@ dependencies = [
     "tree-sitter-python",
     "httpx",
     "websockets",
+    "python-multipart>=0.0.32",
 ]
 
 [project.optional-dependencies]

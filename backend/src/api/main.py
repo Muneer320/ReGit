@@ -32,6 +32,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     UploadFile,
 )
@@ -367,7 +368,6 @@ def _pinned_date(store: ObjectStore, parents: list[str]) -> str:
         if row and row[0]:
             return row[0]
     return datetime.now(timezone.utc).isoformat()
-    return _ci(parents, root_hash, artifact_id, message, author, author_date=date)
 
 
 @app.get("/api/artifacts/{artifact_id}/history")
@@ -424,21 +424,24 @@ def checkout(
 # ---------------------------------------------------------------------------
 @app.get("/api/diff")
 def diff(
-    artifact_id: str, from_: str, to: str, store: ObjectStore = Depends(get_store)
+    artifact_id: str,
+    from_commit: str = Query(..., alias="from"),
+    to: str = Query(...),
+    store: ObjectStore = Depends(get_store),
 ) -> dict:
-    if from_ == to:
+    if from_commit == to:
         raise ApiError(400, "SAME_COMMIT", "from and to must differ")
     row = _artifact(store, artifact_id)
     if row is None:
         raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
     kind = row[1]
-    if _root_hash(store, from_) is None:
-        raise ApiError(404, "COMMIT_NOT_FOUND", f"unknown commit {from_}")
+    if _root_hash(store, from_commit) is None:
+        raise ApiError(404, "COMMIT_NOT_FOUND", f"unknown commit {from_commit}")
     if _root_hash(store, to) is None:
         raise ApiError(404, "COMMIT_NOT_FOUND", f"unknown commit {to}")
 
     if kind in ("md", "txt"):
-        old_text = _content(store, kind, from_)
+        old_text = _content(store, kind, from_commit)
         new_text = _content(store, kind, to)
         return {"kind": kind, "changes": align.diff_prose(old_text, new_text, artifact_id)}
     raise NotImplementedError(
