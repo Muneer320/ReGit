@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS refs(name TEXT NOT NULL, artifact_id TEXT NOT NULL, h
 CREATE TABLE IF NOT EXISTS artifacts(id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT, source_id TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS branches(name TEXT NOT NULL, artifact_id TEXT NOT NULL, head_commit_id TEXT NOT NULL, created_at TEXT,
                       PRIMARY KEY(name, artifact_id));
+CREATE TABLE IF NOT EXISTS tombstones(artifact_id TEXT PRIMARY KEY, deleted_at TEXT);
 CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY, name TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS workspace_members(workspace_id TEXT, artifact_id TEXT, branch_name TEXT, PRIMARY KEY(workspace_id, artifact_id, branch_name));
 CREATE TABLE IF NOT EXISTS merges(id TEXT PRIMARY KEY, artifact_id TEXT, base_commit TEXT, ours_commit TEXT, theirs_commit TEXT,

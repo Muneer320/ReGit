@@ -41,7 +41,7 @@ class ObjectStore:
     def __init__(self, data_dir: str = "data") -> None:
         self.objects_dir = Path(data_dir) / "objects"
         self.objects_dir.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(str(Path(data_dir) / "meta.db"))
+        self.db = sqlite3.connect(str(Path(data_dir) / "meta.db"), check_same_thread=False)
         # Autocommit mode: transactions are explicit via _tx() (BEGIN IMMEDIATE
         # serializes writers per artifact, which is what ref CAS needs).
         self.db.isolation_level = None
