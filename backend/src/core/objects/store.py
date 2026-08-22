@@ -21,6 +21,15 @@ class ObjectStore:
         self.db = sqlite3.connect(str(Path(data_dir) / "meta.db"))
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
+        self._bootstrap_schema()
+
+    def _bootstrap_schema(self) -> None:
+        """Apply the canonical DDL if not present. All statements are
+        IF NOT EXISTS, so this is idempotent. Schema lives in backend/src/db/
+        and is the single source of truth; the store must not drift from it."""
+        schema = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
+        self.db.executescript(schema.read_text())
+        self.db.commit()
 
     def _path_for(self, oid: str) -> Path:
         return self.objects_dir / oid[:2] / oid[2:]

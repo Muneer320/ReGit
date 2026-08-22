@@ -24,8 +24,17 @@ def test_dedup_same_content_same_id(tmp_path):
     assert store.put_blob("md", b"x") == store.put_blob("md", b"x")
 
 
-def test_commit_immutability_triggers():
-    pytest.xfail("H1: UPDATE/DELETE on objects/commits must RAISE(ABORT) — data-model.md DDL")
+def test_commit_immutability_triggers(tmp_path):
+    import sqlite3
+    from pathlib import Path
+    store = ObjectStore(str(tmp_path))
+    oid = store.put_blob("md", b"x")
+    db = sqlite3.connect(str(Path(tmp_path) / "meta.db"))
+    with pytest.raises((sqlite3.IntegrityError, sqlite3.OperationalError)):
+        db.execute("UPDATE objects SET kind='z' WHERE hash=?", (oid,))
+    with pytest.raises((sqlite3.IntegrityError, sqlite3.OperationalError)):
+        db.execute("DELETE FROM objects WHERE hash=?", (oid,))
+    assert store.get_blob(oid, verify=True) == b"x"
 
 
 def test_branch_is_mutable_ref_to_immutable_commit():
