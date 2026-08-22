@@ -17,7 +17,8 @@ Engine status today:
   - retrieval/search (retrieval/service.search): IMPLEMENTED — hybrid
     FTS5 BM25 + Chroma kNN, delta-reindexed on every commit; degraded to
     keyword-only when the vector stack is unavailable (retrieval-spec.md).
-  - chat/pdf/codebase diff engines, collaboration/WS: STUB -> 501.
+  - chat/pdf/codebase diff engines: STUB -> 501. Collaboration/WS
+    (realtime/ws.py): IMPLEMENTED — live CRDT editing + commit-from-live.
 Those stubs raise NotImplementedError which is mapped to 501; we do NOT fake
 responses — the route + contract shape are fixed and the engine slots in later.
 """
@@ -38,6 +39,7 @@ from fastapi import (
     Query,
     Request,
     UploadFile,
+    WebSocket,
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
@@ -50,6 +52,7 @@ from ..core.objects.store import BranchExistsError, ObjectStore, RefConflictErro
 from ..ingestion import pipeline
 from ..ingestion.parsers import VALID_TYPES, ParseError
 from ..provenance import service as provenance
+from ..realtime import ws as realtime_ws
 from ..retrieval import indexer as retrieval_indexer
 from ..retrieval import service as retrieval
 
@@ -596,6 +599,26 @@ def provenance_artifact_sources(
 @app.get("/api/provenance/at/{commit_id}/claims")
 def provenance_at(commit_id: str, store: ObjectStore = Depends(get_store)) -> list[dict]:
     return provenance.claims_at(store, commit_id)
+
+
+# ---------------------------------------------------------------------------
+# Realtime collaboration (realtime-protocol.md / collaboration-spec.md)
+# ---------------------------------------------------------------------------
+@app.websocket("/collaborate/{artifact_id}")
+async def collaborate_ws(
+    websocket: WebSocket,
+    artifact_id: str,
+    branch: str = "main",
+    user: str = "anonymous",
+) -> None:
+    """WS /collaborate/:artifact_id?branch=X&user=userA — live CRDT editing.
+
+    Binary yjs sync + awareness frames and JSON control frames
+    (commit_request / presence_ping) are handled in backend/src/realtime/ws.py
+    against a per-(artifact, branch) pycrdt Doc; commit-from-live is serialized
+    per artifact and lands as a normal DAG commit (store.commit CAS).
+    """
+    await realtime_ws.collaborate(websocket, artifact_id, branch, user)
 
 
 # ---------------------------------------------------------------------------

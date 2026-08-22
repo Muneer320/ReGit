@@ -8,7 +8,6 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pycrdt>=0.14",
-    "pycrdt-websocket",
     "chromadb",
     "sentence-transformers",
     "pypdf",
@@ -47,4 +46,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [dependency-groups]
 dev = [
     "ruff>=0.16.4",
+    "websockets>=17.0.1",
 ]
