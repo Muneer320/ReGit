@@ -14,12 +14,7 @@ from backend.src.api.main import app
 from backend.src.core.objects.store import ObjectStore
 
 
-@pytest.fixture()
-def client(tmp_path):
-    client = TestClient(app)
-    # Isolate state per test: a brand-new store on app.state.
-    client.app.state.store = ObjectStore(str(tmp_path / "store"))
-    yield client
+# client fixture is shared via tests/integration/conftest.py
 
 
 def hdr(user: str = "userA") -> dict:
