@@ -12,10 +12,8 @@ build/
 uv.lock.tmp/
 
 # Data / runtime artifacts (local demo store — committed sample fixtures live in scripts/fixtures)
-data/db/
-data/objects/
-data/vectordb/
-data/models/
+# Runtime data (all derived/reproducible — never commit)
+data/
 *.db
 *.sqlite3
 
