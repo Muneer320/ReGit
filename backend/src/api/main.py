@@ -485,7 +485,7 @@ def merge(
         )
     from ..core.merge.three_way import merge_prose
 
-    result = merge_prose(base_text, ours_text, theirs_text)  # STUB -> 501
+    result = merge_prose(base_text, ours_text, theirs_text)
     if result.state == "clean":
         merged_root = store.put_blob(kind, result.merged_text.encode("utf-8"))
         result_commit = store.commit(
@@ -496,10 +496,39 @@ def merge(
         return {
             "merge_id": "", "state": "clean", "conflicts": [],
             "preview_text": result.merged_text, "result_commit_id": result_commit,
+            "ours_branch": body.ours_branch, "theirs_branch": body.theirs_branch,
         }
-    # conflicts path would persist a Merge row + Conflict rows (H5). Persisted
-    # via merge-spec.md lifecycle when three_way lands; today it 501s above.
-    raise NotImplementedError("H5: merge conflict persistence (merge-spec.md)")
+    # --- conflict path: persist a pending Merge + one Conflict row per
+    # divergence, so the UI can render conflict cards and POST /resolve.
+    merge_id = new_id("mrg_")
+    with store._tx() as db:
+        db.execute(
+            "INSERT INTO merges(id, artifact_id, base_commit, ours_commit, "
+            "theirs_commit, result_commit, state, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (merge_id, body.artifact_id, base_commit, ours_head, theirs_head,
+             None, "conflicts", _now()),
+        )
+        conflict_recs = []
+        for c in result.conflicts:
+            cid = new_id("cnf_")
+            db.execute(
+                "INSERT INTO conflicts(id, merge_id, sid, base_text, ours_text, "
+                "theirs_text, resolution, resolved_text) VALUES (?,?,?,?,?,?,?,?)",
+                (cid, merge_id, c.sid, c.base_text, c.ours_text, c.theirs_text,
+                 None, None),
+            )
+            conflict_recs.append({
+                "id": cid, "sid": c.sid, "base_text": c.base_text,
+                "ours_text": c.ours_text, "theirs_text": c.theirs_text,
+                "resolution": None,
+            })
+    return {
+        "merge_id": merge_id, "state": "conflicts", "conflicts": conflict_recs,
+        "preview_text": result.merged_text,
+        "ours_branch": body.ours_branch, "theirs_branch": body.theirs_branch,
+        "artifact_id": body.artifact_id,
+    }
 
 
 @app.post("/api/merge/{merge_id}/resolve")
@@ -527,10 +556,58 @@ def resolve_merge(
     unresolved = [c[0] for c in conflicts if by_id.get(c[0]) is None]
     if unresolved:
         raise ApiError(400, "UNRESOLVED_CONFLICTS", f"conflicts without resolution: {unresolved}")
-    # Compose the final text from resolutions (H5) -> merge commit.
-    raise NotImplementedError(
-        "H5: final composition of resolved text + 2-parent merge commit (merge-spec.md T7)"
+    # Re-run the engine so we have a fresh MergeResult whose markers carry the
+    # conflict sids (compose_final_text needs the marker blocks, not raw rows).
+    from ..core.merge.three_way import merge_prose, compose_final_text
+
+    kind_row = store.db.execute("SELECT kind FROM artifacts WHERE id=?", (_aid,)).fetchone()
+    kind = kind_row[0] if kind_row else "md"
+    base_text = _content(store, kind, _base) if _base else ""
+    ours_text = _content(store, kind, ours)
+    theirs_text = _content(store, kind, theirs)
+    result = merge_prose(base_text, ours_text, theirs_text)
+
+    # Derive each conflict's final_text: ours -> keep ours, theirs -> theirs,
+    # free -> caller-supplied resolved_text. '' (empty) == keep the deletion.
+    resolutions: dict[str, str] = {}
+    for c_conf in conflicts:
+        (cid, sid, _b, _o, _t, _res) = c_conf
+        r = by_id[cid]
+        if r.resolution == "ours":
+            resolutions[sid] = _o
+        elif r.resolution == "theirs":
+            resolutions[sid] = _t
+        else:  # free
+            resolutions[sid] = (r.resolved_text or _o) if r.resolved_text is not None else _o
+
+    final_text = compose_final_text(result, resolutions)
+    merged_root = store.put_blob(kind, final_text.encode("utf-8"))
+    # Advance the branch that points at OUR side (the merge target): the ref
+    # whose head == ours_commit. Prefer body.ours_branch-equivalent via that ref.
+    target_branch = store.db.execute(
+        "SELECT name FROM branches WHERE artifact_id=? AND head_commit_id=? LIMIT 1",
+        (_aid, ours),
+    ).fetchone()
+    branch_name = target_branch[0] if target_branch else None
+    result_commit = store.commit(
+        [ours, theirs], merged_root, _aid,
+        f"merge resolve {merge_id}", user, branch=branch_name, kind=kind,
     )
+    # Persist resolutions + finalize the pending Merge row.
+    with store._tx() as db:
+        for c_conf in conflicts:
+            (cid, _sid, _b, _o, _t, _res) = c_conf
+            r = by_id[cid]
+            db.execute(
+                "UPDATE conflicts SET resolution=?, resolved_text=? WHERE id=?",
+                (r.resolution, resolutions[_sid], cid),
+            )
+        db.execute(
+            "UPDATE merges SET result_commit=?, state='resolved' WHERE id=?",
+            (result_commit, merge_id),
+        )
+    return {"result_commit_id": result_commit, "merge_id": merge_id,
+            "final_text": final_text}
 
 
 # ---------------------------------------------------------------------------
