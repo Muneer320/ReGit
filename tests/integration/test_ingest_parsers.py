@@ -72,9 +72,17 @@ def test_chatgpt_and_claude_converge_to_same_canonical():
 
     assert cu.payload["source"] == "chatgpt"
     assert clu.payload["source"] == "claude"
+    # CORPUS convergence: the message structure (role+text order) canonicalizes
+    # identically across ChatGPT and Claude exports.
     assert cu.payload["messages"] == clu.payload["messages"]
-    # identical canonical chat -> identical blob identity
-    assert cu.storage_bytes == clu.storage_bytes
+    # Provenance is part of identity: storage_bytes carry the source, so two
+    # imports from DIFFERENT sources are NOT byte-identical (a source is a
+    # first-class provenance node, not metadata). Same-source imports DO dedup.
+    assert cu.storage_bytes != clu.storage_bytes
+    assert ("chatgpt" in cu.storage_bytes.decode()) and ("claude" in clu.storage_bytes.decode())
+    # two identical ChatGPT imports (same source) -> byte-identical blob
+    cu2 = parse("chatgpt", "c.json", json.dumps(cg).encode())[0]
+    assert cu.storage_bytes == cu2.storage_bytes
     # role order preserved
     assert [m["role"] for m in cu.payload["messages"]] == ["user", "assistant"]
 
