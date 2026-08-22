@@ -1,0 +1,49 @@
+[project]
+name = "git-for-research"
+version = "0.1.0"
+description = "Research-native version control: content-addressed immutable artifacts, semantic diff/merge, CRDT collaboration, provenance, version-aware retrieval."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pycrdt>=0.14",
+    "pycrdt-websocket",
+    "chromadb",
+    "sentence-transformers",
+    "pypdf",
+    "tree-sitter",
+    "tree-sitter-python",
+    "httpx",
+    "websockets",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio",
+]
+
+[tool.uv]
+# This is a monorepo-style app (backend/, frontend/, shared/, data/, scripts/),
+# not a single installable package — uv should manage the venv + deps (e.g.
+# `uv add`, `uv run`, `uv sync`) WITHOUT trying to build/install "git-for-research"
+# itself. The backend runs as a path-mapped app (pytest has pythonpath=["."]).
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.4",
+]

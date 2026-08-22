@@ -8,6 +8,8 @@ env/
 dist/
 build/
 *.egg
+.uv_cache/
+uv.lock.tmp/
 
 # Data / runtime artifacts (local demo store — committed sample fixtures live in scripts/fixtures)
 data/db/
