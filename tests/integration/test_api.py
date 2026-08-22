@@ -58,22 +58,39 @@ def test_root_artifact_roundtrip(client):
 
 
 def test_commit_dedup_and_idempotency(client):
+    import os
+    # Deterministic pinning: identical (parent, content, message, author, date)
+    # must hash identically for a TRUE dedup. Without GR_AUTHOR_DATE the two
+    # calls get different wall-clock dates so they'd never dedup.
+    os.environ["GR_AUTHOR_DATE"] = "2026-01-01T00:00:00+00:00"
+
     art = client.post("/api/artifacts", json={"kind": "md", "title": "a", "content": "v0"},
                       headers=hdr()).json()["artifact_id"]
-    c0 = client.post("/api/artifacts", json={"kind": "md", "title": "a", "content": "v0"},
-                     headers=hdr()).json()["root_commit_id"]
+    # commit on main -> 201, head advances c0->c1
     r1 = client.post(f"/api/artifacts/{art}/commit", json={
         "branch": "main", "content": "v1", "message": "second",
     }, headers=hdr())
     assert r1.status_code == 201
     c1 = r1.json()["commit_id"]
+    c0 = client.get(f"/api/artifacts/{art}/history").json()[1]["commit_id"]
 
-    # identical content + same message -> same commit id; second returns 200
+    # Dedup via a SECOND branch rooted at the SAME base: identical
+    # (parent=c0, content=v1, message, author, pinned date) -> same commit id.
+    client.post("/api/branches", json={"artifact_id": art, "name": "br2", "from_commit": c0},
+                headers=hdr())
     r2 = client.post(f"/api/artifacts/{art}/commit", json={
-        "branch": "main", "content": "v1", "message": "second",
+        "branch": "br2", "content": "v1", "message": "second",
     }, headers=hdr())
+    # TRUE dedup -> 200, same commit id as main's c1
     assert r2.status_code == 200
     assert r2.json()["commit_id"] == c1
+
+    # Contents differ -> genuinely different commit -> 201 (not a dedup)
+    r3 = client.post(f"/api/artifacts/{art}/commit", json={
+        "branch": "br2", "content": "v2", "message": "second",
+    }, headers=hdr())
+    assert r3.status_code == 201
+    assert r3.json()["commit_id"] != c1
 
     assert c1 != c0
     hist = client.get(f"/api/artifacts/{art}/history").json()
@@ -84,15 +101,19 @@ def test_commit_dedup_and_idempotency(client):
 def test_stale_base_returns_409_with_head(client):
     art = client.post("/api/artifacts", json={"kind": "md", "title": "a", "content": "v0"},
                       headers=hdr()).json()["artifact_id"]
-    head = client.get(f"/api/artifacts/{art}").json()["branches"][0]["head"]
+    root = client.get(f"/api/artifacts/{art}").json()["branches"][0]["head"]
     client.post(f"/api/artifacts/{art}/commit", json={
         "branch": "main", "content": "v1", "message": "m"}, headers=hdr())
+    # after the v1 commit the branch head has ADVANCED past `root`; a request
+    # that still names `root` as its base is stale -> 409 with the CURRENT head
+    cur_head = client.get(f"/api/artifacts/{art}").json()["branches"][0]["head"]
+    assert cur_head != root  # the commit really advanced the head
     r = client.post(f"/api/artifacts/{art}/commit", json={
-        "branch": "main", "content": "v2", "message": "stale", "base_commit": head,
+        "branch": "main", "content": "v2", "message": "stale", "base_commit": root,
     }, headers=hdr())
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "STALE_BASE"
-    assert r.json()["head"] == head
+    assert r.json()["head"] == cur_head  # 409 carries the current, live head
 
 
 def test_bad_kind_400_error_shape(client):
