@@ -182,7 +182,7 @@ def test_ingest_multipart_and_provenance(client):
     assert pa.status_code == 200
     assert pa.json()[0]["source"]["id"] == src
 
-    pt = client.get(f"/api/provenance/at/{claim[2]}/claims")
+    pt = client.get(f"/api/provenance/at/{claim[3]}/claims")
     assert pt.status_code == 200
     assert any(c["id"] == claim_id for c in pt.json())
 

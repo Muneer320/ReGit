@@ -59,13 +59,24 @@ def get_claim(store, claim_id: str) -> dict | None:
         seen.add(key)
         snippet = _snippet(store, kind, oid)
         chain.append({"kind": kind, "id": oid, "snippet": snippet})
-        # Edges pointing INTO this node (from_kind/from_id -> node).
+        # Walk edges in BOTH directions:
+        #   backward (WHERE to_kind=node) -> find what STATES this node
+        #     (e.g. a commit that states the claim);
+        #   forward  (WHERE from_kind=node) -> find the node's ORIGIN
+        #     (e.g. the source an import derived from, then the source's
+        #      artifact) — answers "where did this claim come from?" end-to-end.
         for fk, fid, rel in store.db.execute(
             "SELECT from_kind, from_id, relation FROM provenance_edges "
             "WHERE to_kind=? AND to_id=?",
             (kind, oid),
         ):
             q.append((fk, fid))
+        for tk, tid, rel in store.db.execute(
+            "SELECT to_kind, to_id, relation FROM provenance_edges "
+            "WHERE from_kind=? AND from_id=?",
+            (kind, oid),
+        ):
+            q.append((tk, tid))
     return {"claim": claim, "chain": chain}
 
 
@@ -84,7 +95,7 @@ def artifact_sources(store, artifact_id: str) -> list[dict]:
     for src_id, s_type, fname in rows:
         commits = [
             r[0] for r in store.db.execute(
-                "SELECT commit_id FROM commits WHERE artifact_id=?", (artifact_id,)
+                "SELECT id FROM commits WHERE artifact_id=?", (artifact_id,)
             )
         ]
         result.append({
