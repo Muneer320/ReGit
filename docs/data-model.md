@@ -88,7 +88,7 @@ CREATE TABLE merges(id TEXT PRIMARY KEY, artifact_id TEXT, base_commit TEXT, our
                     result_commit TEXT, state TEXT, created_at TEXT);
 CREATE TABLE conflicts(id TEXT PRIMARY KEY, merge_id TEXT, sid TEXT, base_text TEXT, ours_text TEXT, theirs_text TEXT,
                        resolution TEXT, resolved_text TEXT);
-CREATE TABLE crdt_ops(id TEXT PRIMARY KEY, room TEXT, seq INTEGER, client_id TEXT, update BLOB, received_at TEXT);
+CREATE TABLE crdt_ops(id TEXT PRIMARY KEY, room TEXT, seq INTEGER, client_id TEXT, op BLOB, received_at TEXT);
 CREATE TABLE sources(id TEXT PRIMARY KEY, type TEXT, original_filename TEXT, imported_at TEXT, uploader TEXT);
 CREATE TABLE claims(id TEXT PRIMARY KEY, text TEXT, artifact_id TEXT, commit_id TEXT, sid TEXT, created_at TEXT);
 CREATE TABLE provenance_edges(id TEXT PRIMARY KEY, from_kind TEXT, from_id TEXT, to_kind TEXT, to_id TEXT,

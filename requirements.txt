@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pycrdt
+pycrdt-websocket
+chromadb
+sentence-transformers
+pypdf
+tree-sitter
+tree-sitter-python
+pytest
+httpx
+websockets
