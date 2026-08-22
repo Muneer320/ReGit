@@ -7,6 +7,7 @@ import { ConflictCard } from '../components/ConflictCard'
 import type { PendingResolution } from '../components/ConflictCard'
 import { ConflictBanner, MergeSuccess, OursTheirsHeader } from '../components/MergePieces'
 import { Badge, ErrorState, LoadingState, MockChip, Spinner } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 type Phase = 'setup' | 'merging' | 'conflicts' | 'resolving' | 'done'
 
@@ -175,7 +176,7 @@ export function MergePage({ artifactId }: { artifactId: string }) {
                   disabled={!theirs || phase === 'merging'}
                   style={{ height: 32 }}
                 >
-                  ⑃ Attempt merge
+                   <Icon name="merge" size={14} /> Attempt merge
                 </button>
               </div>
             </div>
@@ -279,8 +280,7 @@ export function MergePage({ artifactId }: { artifactId: string }) {
 
       {phase === 'setup' && !branchesError && branches.length <= 1 && (
         <div className="demo-hint" style={{ marginTop: 14 }}>
-          <span>ⓘ</span>
-          <span>
+           <span>
             Merging needs two branches. Create one via History → create branch, or load demo data from the Workspace.
           </span>
         </div>

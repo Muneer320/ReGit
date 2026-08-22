@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Conflict, ResolutionKind } from '../lib/types'
 import { Badge } from './ui'
+import { Icon } from './Icon'
 
 export interface PendingResolution {
   kind: ResolutionKind
@@ -45,13 +46,13 @@ export function ConflictCard({
   return (
     <div className={`conflict-card ${resolved ? 'resolved' : ''}`}>
       <div className="conflict-card-head">
-        <span style={{ color: 'var(--red)', fontWeight: 700 }}>⑃</span>
+        <Icon name="merge" size={15} className="faint" />
         <h3>Conflict in sentence</h3>
         <span className="mono faint small">{conflict.sid}</span>
         <span className="spacer" style={{ flex: 1 }} />
         {resolved ? (
           <>
-            <Badge variant="green">✓ resolved · {value!.kind === 'free' ? 'custom edit' : value!.kind}</Badge>
+            <Badge variant="green"><Icon name="check" size={10} /> resolved · {value!.kind === 'free' ? 'custom edit' : value!.kind}</Badge>
             {!disabled && (
               <button className="btn ghost sm" onClick={() => onChange(undefined)} title="Undo this resolution">
                 undo
@@ -130,7 +131,7 @@ export function ConflictCard({
           </button>
           {resolved && (
             <span className="chosen-note">
-              ✓ {value!.kind === 'free' ? 'custom text applied' : `${value!.kind} accepted`}
+               <Icon name="check" size={11} /> {value!.kind === 'free' ? 'custom text applied' : `${value!.kind} accepted`}
             </span>
           )}
         </div>

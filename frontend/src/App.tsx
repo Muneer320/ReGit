@@ -3,6 +3,7 @@ import { AppShell } from './components/AppShell'
 import { Toasts } from './components/ui'
 import { useRoute } from './lib/router'
 import { WorkspacePage } from './pages/WorkspacePage'
+import { DashboardPage } from './pages/DashboardPage'
 import { ArtifactPage } from './pages/ArtifactPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { DiffPage } from './pages/DiffPage'
@@ -14,6 +15,8 @@ function Routes() {
   const [first, second] = route.segments
 
   if (first === 'search') return <SearchPage />
+  if (first === 'repositories' || first === 'workspace') return <WorkspacePage />
+  if (!first) return <DashboardPage />
   if (first === 'art' && second) {
     const id = decodeURIComponent(second)
     switch (route.segments[2]) {

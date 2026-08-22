@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { useApp } from '../state/store'
+import { Icon } from './Icon'
+import type { IconName } from './Icon'
 
 export function Badge({
   children,
@@ -14,8 +16,11 @@ export function Badge({
 }
 
 export function KindBadge({ kind }: { kind: string }) {
+  const icon: IconName =
+    kind === 'chat' ? 'chat' : kind === 'pdf' ? 'pdf' : kind === 'codebase' ? 'code' : 'file'
   return (
     <span className={`badge kind-${kind}`}>
+      <Icon name={icon} size={10} />
       {kind === 'md' && 'MD'}
       {kind === 'txt' && 'TXT'}
       {kind === 'chat' && 'CHAT'}
@@ -29,9 +34,7 @@ export function KindBadge({ kind }: { kind: string }) {
 export function BranchBadge({ name }: { name: string }) {
   return (
     <span className="badge branch" title="branch">
-      <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-        <path d="M5 3.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm0 2.122a2.25 2.25 0 1 0-1.5 0v5.256a2.251 2.251 0 1 0 1.5 0V7.4c.435-.14.81-.42 1.068-.79L6.6 5.98A2.75 2.75 0 0 1 10.5 7.5v.256a2.25 2.25 0 1 0 1.5 0V7.5a4.25 4.25 0 0 0-6.88-3.34l-.12.09Z" />
-      </svg>
+      <Icon name="branch" size={10} />
       {name}
     </span>
   )
@@ -69,28 +72,32 @@ export function LoadingState({ label = 'Loading from backend…' }: { label?: st
   return (
     <div className="state-block">
       <Spinner />
-      <p style={{ marginTop: 10 }}>{label}</p>
+      <p style={{ marginTop: 8 }}>{label}</p>
     </div>
   )
 }
 
 export function EmptyState({
-  icon = '∅',
+  icon = 'file',
   title,
   hint,
   action,
 }: {
-  icon?: string
+  icon?: IconName | 'none'
   title: string
   hint?: string
   action?: ReactNode
 }) {
   return (
     <div className="state-block">
-      <div className="icon">{icon}</div>
-      <div className="title">{title}</div>
+      {icon !== 'none' && (
+        <div style={{ color: 'var(--fg-faint)', marginBottom: 6 }}>
+          <Icon name={icon} size={18} />
+        </div>
+      )}
+      <div className="state-title">{title}</div>
       {hint && <p>{hint}</p>}
-      {action && <div style={{ marginTop: 14 }}>{action}</div>}
+      {action && <div style={{ marginTop: 12 }}>{action}</div>}
     </div>
   )
 }
@@ -98,8 +105,10 @@ export function EmptyState({
 export function ErrorState({ message, retry }: { message: string; retry?: () => void }) {
   return (
     <div className="state-block">
-      <div className="icon">⚠</div>
-      <div className="title">Something failed</div>
+      <div style={{ color: 'var(--red)', marginBottom: 6 }}>
+        <Icon name="warning" size={16} />
+      </div>
+      <div className="state-title">Request failed</div>
       <p className="mono small" style={{ color: 'var(--red)' }}>
         {message}
       </p>
@@ -129,7 +138,12 @@ export function Toasts() {
     <div className="toast-host">
       {toasts.map((t) => (
         <div key={t.id} className={`toast ${t.kind}`} onClick={() => dismissToast(t.id)}>
-          <span>{t.kind === 'error' ? '✕' : t.kind === 'success' ? '✓' : '›'}</span>
+          <span style={{ marginTop: 1 }}>
+            <Icon
+              name={t.kind === 'error' ? 'warning' : t.kind === 'success' ? 'check' : 'dot'}
+              size={13}
+            />
+          </span>
           <span>{t.text}</span>
         </div>
       ))}

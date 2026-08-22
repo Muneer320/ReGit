@@ -126,7 +126,7 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
           </p>
         </div>
         <div className="btn-row">
-          <Badge variant="branch">⌥ {branch}</Badge>
+           <Badge variant="branch">{branch}</Badge>
           {headCid && (
             <span className="small dim">
               @ <Hash hash={headCid} />
@@ -152,7 +152,7 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
             {branches.map((b) => (
               <tr key={b.name} onClick={() => navigate(`/art/${artifactId}?branch=${encodeURIComponent(b.name)}`)} style={{ cursor: 'pointer' }}>
                 <td style={{ width: '30%' }}>
-                  <Badge variant={b.name === branch ? 'blue' : 'branch'}>⌥ {b.name}</Badge>{' '}
+                  <Badge variant={b.name === branch ? 'blue' : 'branch'}>{b.name}</Badge>{' '}
                   {b.name === branch && <span className="faint small">current</span>}
                 </td>
                 <td className="mono small dim">head {b.head_commit_id.slice(0, 12)}</td>

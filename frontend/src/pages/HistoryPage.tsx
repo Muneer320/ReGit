@@ -4,7 +4,35 @@ import type { CommitInfo } from '../lib/types'
 import { useApp } from '../state/store'
 import { useRoute, navigate } from '../lib/router'
 import { BranchSelector } from '../components/BranchSelector'
+import { Icon } from '../components/Icon'
 import { Badge, EmptyState, ErrorState, Hash, LoadingState, shortHash, timeAgo } from '../components/ui'
+
+/** One lane of the commit graph: vertical rail + node, drawn per row. */
+function GraphRail({
+  first,
+  last,
+  head,
+  merge,
+}: {
+  first: boolean
+  last: boolean
+  head: boolean
+  merge: boolean
+}) {
+  const lineTop = first ? 16 : 0
+  return (
+    <div className="commit-graph">
+      {!last && <span className="graph-line" style={{ top: lineTop }} />}
+      <span className={`graph-node ${head ? 'head' : ''} ${merge ? 'merge' : ''}`} title={head ? 'branch head' : merge ? 'merge commit' : undefined} />
+      {merge && (
+        <svg className="graph-branch-in" width="20" height="12" viewBox="0 0 20 12" aria-hidden>
+          <path d="M19 1 C 12 1, 9 4, 6.5 7" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" />
+          <circle cx="19" cy="1" r="3" fill="var(--bg1)" stroke="var(--border-strong)" strokeWidth="1.5" />
+        </svg>
+      )}
+    </div>
+  )
+}
 
 export function HistoryPage({ artifactId }: { artifactId: string }) {
   const route = useRoute()
@@ -61,7 +89,7 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
           <p className="page-sub">The evolution of this artifact — newest first, straight off the DAG.</p>
         </div>
         <div className="btn-row">
-          <Badge variant="branch">⌥ {branch}</Badge>
+          <BranchBadgeInline name={branch} />
           <BranchSelector artifactId={artifactId} value={branch} onChange={(b) => navigate(`/art/${artifactId}/history?branch=${encodeURIComponent(b)}`)} />
         </div>
       </div>
@@ -74,7 +102,7 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
       {!error && !commits && <LoadingState label="Walking the DAG…" />}
       {!error && commits && commits.length === 0 && (
         <div className="panel">
-          <EmptyState icon="⌥" title="No commits on this branch" hint={`Branch "${branch}" has no head yet.`} />
+          <EmptyState icon="commit" title="No commits on this branch" hint={`Branch "${branch}" has no head yet.`} />
         </div>
       )}
 
@@ -87,18 +115,12 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
                 const isMerge = c.parents.length >= 2
                 return (
                   <div className="commit-item" key={c.commit_id}>
-                    <div className="commit-rail">
-                      <span
-                        className={`commit-dot ${isHead ? 'head' : ''} ${isMerge ? 'merge' : ''}`}
-                        title={isHead ? 'branch head' : isMerge ? 'merge commit (2 parents)' : undefined}
-                      />
-                      {i < commits.length - 1 && <span className="commit-line" />}
-                    </div>
+                    <GraphRail first={i === 0} last={i === commits.length - 1} head={isHead} merge={isMerge} />
                     <div className="commit-main">
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                         <span className="commit-msg">{c.message}</span>
-                        {isHead && <Badge variant="green">head</Badge>}
-                        {isMerge && <Badge variant="blue">merge · 2 parents</Badge>}
+                        {isHead && <Badge variant="green">HEAD</Badge>}
+                        {isMerge && <Badge variant="blue">merge · {c.parents.length} parents</Badge>}
                       </div>
                       <div className="commit-meta">
                         <Hash hash={c.commit_id} />
@@ -137,7 +159,7 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
                 Checked-out snapshot <Hash hash={preview.cid} />
                 <span className="spacer" />
                 <button className="btn ghost sm" onClick={() => setPreview(null)}>
-                  ✕ close
+                  <Icon name="x" size={11} /> close
                 </button>
               </div>
               <div className="panel-body">
@@ -152,5 +174,14 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
         </>
       )}
     </div>
+  )
+}
+
+function BranchBadgeInline({ name }: { name: string }) {
+  return (
+    <span className="badge branch">
+      <Icon name="branch" size={10} />
+      {name}
+    </span>
   )
 }

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { Artifact } from '../lib/types'
-import { navigate } from '../lib/router'
+import { navigate, useRoute } from '../lib/router'
 import { useApp } from '../state/store'
 import { seedDemoData } from '../lib/seed'
 import { IngestDialog } from '../components/IngestDialog'
 import { BranchBadge, EmptyState, ErrorState, Hash, KindBadge, timeAgo } from '../components/ui'
+import { Icon } from '../components/Icon'
 
 interface Row {
   artifact: Artifact
@@ -14,11 +15,13 @@ interface Row {
 }
 
 export function WorkspacePage() {
+  const route = useRoute()
   const { toast } = useApp()
   const [rows, setRows] = useState<Row[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [showIngest, setShowIngest] = useState(false)
+  const [showIngest, setShowIngest] = useState(route.query.get('ingest') === '1')
   const [seeding, setSeeding] = useState(false)
+  const [repoFilter, setRepoFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoadError(null)
@@ -72,14 +75,18 @@ export function WorkspacePage() {
   }
 
   const empty = rows !== null && rows.length === 0 && !loadError
+  const filteredRows = rows?.filter(({ artifact }) => {
+    const q = repoFilter.trim().toLowerCase()
+    return !q || artifact.title.toLowerCase().includes(q) || artifact.id.toLowerCase().includes(q)
+  })
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Workspace</h1>
-          <p className="page-sub">
-            Version-controlled research artifacts — every edit becomes an immutable, content-addressed commit.
+            <h1>Your repositories</h1>
+            <p className="page-sub">
+             Version-controlled research artifacts you own or have access to.
           </p>
         </div>
         <div className="btn-row">
@@ -102,7 +109,7 @@ export function WorkspacePage() {
       {empty && (
         <div className="panel">
           <EmptyState
-            icon="⬡"
+            icon="repo"
             title="No artifacts yet"
             hint="Ingest a markdown file, chat export, or PDF — or load the scripted demo data to explore diffs, branches and merges."
             action={
@@ -129,7 +136,40 @@ export function WorkspacePage() {
       )}
 
       {rows && rows.length > 0 && (
-        <div className="panel">
+        <div className="workspace-summary" aria-label="Workspace summary">
+          <div className="summary-stat">
+            <Icon name="repo" size={15} />
+            <span><b>{rows.length}</b><small>repositories</small></span>
+          </div>
+          <div className="summary-stat">
+            <Icon name="branch" size={15} />
+            <span><b>{rows.reduce((total, row) => total + row.artifact.branches.length, 0)}</b><small>branches</small></span>
+          </div>
+          <div className="summary-stat">
+            <Icon name="commit" size={15} />
+            <span><b>{rows.filter((row) => row.head).length}</b><small>active heads</small></span>
+          </div>
+          <div className="summary-stat summary-state">
+            <span className="connection online"><span className="dot" /> connected</span>
+            <small>workspace status</small>
+          </div>
+        </div>
+      )}
+
+      {rows && rows.length > 0 && (
+        <div className="repository-list">
+          <section>
+            <div className="dashboard-section-head">
+              <div>
+                <h2>Your repositories</h2>
+                <p className="faint small">Research artifacts you own or have access to.</p>
+              </div>
+              <div className="repo-filter-wrap">
+                <Icon name="search" size={12} />
+                <input className="input repo-filter" aria-label="Find a repository" placeholder="Find a repository…" value={repoFilter} onChange={(e) => setRepoFilter(e.target.value)} />
+              </div>
+            </div>
+            <div className="panel">
           <table className="artifact-table">
             <thead>
               <tr>
@@ -141,7 +181,7 @@ export function WorkspacePage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ artifact: a, head }) => (
+              {filteredRows?.map(({ artifact: a, head }) => (
                 <tr key={a.id} onClick={() => navigate(`/art/${a.id}`)}>
                   <td>
                     <span className="title-cell">{a.title || a.id}</span>
@@ -171,12 +211,17 @@ export function WorkspacePage() {
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <span className="btn ghost sm">Open →</span>
+                    <span className="artifact-row-arrow" aria-label="Open artifact">
+                      <Icon name="chevron-right" size={14} />
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+              {filteredRows?.length === 0 && <div className="state-block">No repositories match “{repoFilter}”.</div>}
+            </div>
+          </section>
         </div>
       )}
 
