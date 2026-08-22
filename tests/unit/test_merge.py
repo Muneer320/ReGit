@@ -8,7 +8,6 @@ differently) — that is the live conflict card for the judges.
 from pathlib import Path
 
 from backend.src.core.merge.three_way import (
-    InsertOverlapRec,
     compose_final_text,
     merge_commits,
     merge_prose,
@@ -173,23 +172,26 @@ def test_delete_vs_modify_conflict_theirs_deleted():
 # T5: both insert at same anchor -> both kept, ours-then-theirs
 # ---------------------------------------------------------------------------
 
-def test_both_insert_same_anchor_kept_ours_then_theirs():
+def test_both_insert_same_anchor_is_real_conflict():
     base = "Anchor paragraph first.\n\nSettler paragraph final."
     ours = "Anchor paragraph first.\n\nOur inserted claim.\n\nSettler paragraph final."
     theirs = "Anchor paragraph first.\n\nTheir inserted claim.\n\nSettler paragraph final."
 
     result = merge_prose(base, ours, theirs)
 
-    # both kept, ordered ours-then-theirs; insert overlap is informational,
-    # not a resolution card -> state stays clean
-    assert result.state == "clean"
-    assert result.conflicts == []
-    assert result.insert_overlaps == [
-        InsertOverlapRec(sid="1:0", ours_text="Our inserted claim.", theirs_text="Their inserted claim.")
-    ]
-    assert result.merged_text.index("Our inserted claim.") < result.merged_text.index(
-        "Their inserted claim."
-    )
+    # Ruling (Git semantics): both sides inserted at the same anchor -> a REAL
+    # conflict the user resolves (mirrors Git "both sides added content"),
+    # NOT silent auto-merge. State must be "conflicts".
+    assert result.state == "conflicts"
+    assert len(result.conflicts) == 1
+    c = result.conflicts[0]
+    assert c.ours_text.strip() == "Our inserted claim."
+    assert c.theirs_text.strip() == "Their inserted claim."
+    # both texts present in the merged skeleton, wrapped in conflict markers
+    assert "Our inserted claim." in result.merged_text
+    assert "Their inserted claim." in result.merged_text
+    assert "<<<<<<<" in result.merged_text and ">>>>>>>" in result.merged_text
+    # the resolved/unchanged sentences are intact (nothing silently dropped)
     assert "Anchor paragraph first." in result.merged_text
     assert "Settler paragraph final." in result.merged_text
 

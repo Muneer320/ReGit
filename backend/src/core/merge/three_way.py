@@ -191,15 +191,21 @@ def merge_prose(base: str, ours: str, theirs: str) -> MergeResult:
         o_ins = ins_o.get(a, [])
         t_ins = ins_t.get(a, [])
         if o_ins and t_ins:
-            overlaps.append(InsertOverlapRec(
-                sid=_anchor_sid(base_flat, a),
-                ours_text=" ".join(ours_sents[i] for i in o_ins),
-                theirs_text=" ".join(theirs_sents[i] for i in t_ins),
-            ))
-        for i in o_ins:
-            slots.append((a, ours_sents[i]))
-        for i in t_ins:
-            slots.append((a, theirs_sents[i]))
+            # Both sides inserted at the same anchor (Git: "both sides added
+            # content" / "both modified"). Mirrors Git: this is a REAL conflict
+            # the user resolves — both insertions keep their text, rendered as
+            # a conflict card + marker; NOT silently auto-merged. (Ruling: keep
+            # identical to how Git manages insert-inset conflicts.)
+            sid = _anchor_sid(base_flat, a)
+            ours_text = " ".join(ours_sents[i] for i in o_ins)
+            theirs_text = " ".join(theirs_sents[i] for i in t_ins)
+            conflicts.append(MergeConflictRec(sid, "", ours_text, theirs_text))
+            slots.append((a, _conflict_marker(sid, ours_text, theirs_text)))
+        else:
+            for i in o_ins:
+                slots.append((a, ours_sents[i]))
+            for i in t_ins:
+                slots.append((a, theirs_sents[i]))
 
         if a < n:
             pi, si, btext = base_flat[a]
