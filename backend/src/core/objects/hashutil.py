@@ -7,7 +7,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Iterable, Optional
+from collections.abc import Iterable
+from datetime import UTC
 
 BLOB_TAG = "gr-obj-v1"
 COMMIT_TAG = "gr-commit-v1"
@@ -37,7 +38,7 @@ def commit_id(
     artifact_id: str,
     message: str,
     author: str,
-    author_date: Optional[str] = None,
+    author_date: str | None = None,
 ) -> str:
     """author_date is part of identity; demo scripts pin it via GR_AUTHOR_DATE."""
     date = author_date or os.environ.get("GR_AUTHOR_DATE") or _now_iso()
@@ -53,9 +54,9 @@ def commit_id(
 
 
 def _now_iso() -> str:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def short_hash(text: str) -> str:

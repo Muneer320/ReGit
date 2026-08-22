@@ -5,9 +5,8 @@ relational ids use prefixed ULIDs. Keep in sync with the spec.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class ArtifactKind(str, Enum):
@@ -70,7 +69,7 @@ class Artifact:
     id: str
     kind: ArtifactKind
     title: str
-    source_id: Optional[str]
+    source_id: str | None
     created_at: str
 
 
@@ -103,9 +102,9 @@ class ChangeStatus(str, Enum):
 class Change:
     span: str  # prose sid | code qualified name | chat "msg:ord:role" | pdf "page:p:s"
     status: ChangeStatus
-    old_text: Optional[str] = None
-    new_text: Optional[str] = None
-    similarity: Optional[float] = None
+    old_text: str | None = None
+    new_text: str | None = None
+    similarity: float | None = None
 
 
 @dataclass(frozen=True)
@@ -132,7 +131,7 @@ class Merge:
     base_commit: str
     ours_commit: str
     theirs_commit: str
-    result_commit: Optional[str]
+    result_commit: str | None
     state: MergeState
     created_at: str
 
@@ -151,8 +150,8 @@ class Conflict:
     base_text: str
     ours_text: str
     theirs_text: str
-    resolution: Optional[Resolution] = None
-    resolved_text: Optional[str] = None
+    resolution: Resolution | None = None
+    resolved_text: str | None = None
 
 
 @dataclass(frozen=True)
@@ -180,7 +179,7 @@ class Claim:
     text: str
     artifact_id: str
     commit_id: str
-    sid: Optional[str]
+    sid: str | None
     created_at: str
 
 
@@ -212,5 +211,5 @@ class SearchResult:
     branch: str
     introduced_in_commit: str
     sid_range: str
-    source_type: Optional[str]
-    source_filename: Optional[str]
+    source_type: str | None
+    source_filename: str | None

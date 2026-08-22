@@ -13,18 +13,17 @@ git pull origin main
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
-All frontend code is **static vanilla JS** served by FastAPI — no framework, no npm build step.
+All frontend code is **React 18 + TypeScript + Vite** (ADR-08) — build with `npm run dev` (dev proxy → backend) or `npm run build`. No vanilla-DOM hand-rolling; components are reusable.
 
-## 1. What you build (frontend/ — ~6 surfaces)
-All in `frontend/src/`. Structure per `docs/adr/adr-08-frontend.md`:
+## 1. What you build (frontend/ — ~6 screens)
+All in `frontend/src/`. Vite/React scaffold is already set up (build verified). Structure:
 ```
 frontend/src/
   pages/       (workspace, editor, history, diff, conflicts, search)
   components/  (presence strip, diff view, conflict card, artifact list, ingest upload)
-  lib/         (api.js — REST client · ws.js — yjs/WS client · ybinding.js — textarea↔Y.Text)
-frontend/vendor/  (yjs UMD y.min.js + y-protocols + y-websocket — vendored, offline)
+  lib/         (api.ts — typed REST client, DONE · ws.ts — yjs/WS client · ybinding.ts — Y.Text hook)
+frontend/dist/  (build output; served by backend at production)
 ```
-Static files served by the backend — confirm mount at `backend/src/api/main.py` (it should serve `frontend/` at `/`).
 
 ## 2. The 6 surfaces (functional, not pretty — judges score the engine)
 | # | Surface | What it must do | REST it calls |
@@ -49,18 +48,14 @@ Read these for full detail — they ARE the contract you code against:
 - `docs/specs/realtime-protocol.md`
 - `docs/adr/adr-08-frontend.md`
 
-## 4. Vendoring yjs (offline requirement — do this FIRST)
-Architecture.md's whole demo bet is "runs fully offline." Grab the UMD builds into `frontend/vendor/` once (from CDN, then commit):
-```bash
-# yjs, y-protocols, y-websocket UMD builds into frontend/vendor/
-```
-Verify offline: after wiring dev server, load the page with **network disabled** — it must still work. Do this early.
+## 4. CRDT + offline requirement
+Architecture.md's whole demo bet is "runs fully offline." `yjs` + `y-websocket` are installed as npm deps (bundled by Vite, so nothing to vendor by hand). Verify offline: after `npm run build`, load the served `dist/` with **network disabled** — it must still work. Do this early.
 
 ## 5. Integration order (your H0→ comparable to Muneer's)
-1. `lib/api.js` — thin fetch wrapper for all REST endpoints (surfaces 1,3,4,5,6 throughout).
+1. `lib/api.ts` — **already written** (typed REST client). Confirm it matches `api-contract.md`, add what's missing.
 2. **Diff view (surface 4) + workspace (surface 1)** — highest demo value, no CRDT needed. Muneer's `align.py` + `three_way.py` are stubs right now; you can build the UI against the API contract and test with `scripts/fixtures/merge/*` once he lands the engine — or temporarily against mocked responses.
 3. History + search (3, 6) — REST-only, cheap, high demo clarity.
-4. **Two-pane editor (2)** — CRDT; needs `lib/ybinding.js` (textarea↔Y.Text). Coordinate with Muneer on when the WS endpoint is live.
+4. **Two-pane editor (2)** — CRDT; needs `lib/ybinding.ts` (a React hook binding a textarea/contentEditable ↔ `Y.Text`). Coordinate with Muneer on when the WS endpoint is live.
 5. **Conflict cards (5)** — THE live-merge demo. Use `scripts/fixtures/merge/{base,ours,theirs}.md`.
 6. Demo narrative + UI state prep — prepare the exact 8-scene story from `docs/demo/demo-script.md`.
 

@@ -19,9 +19,11 @@ data/models/
 *.db
 *.sqlite3
 
-# Frontend (vendored; no build output expected, safety net)
+# Frontend (React/Vite — node deps + build output)
+frontend/node_modules/
 frontend/dist/
 node_modules/
+dist/
 
 # Env / secrets
 .env
