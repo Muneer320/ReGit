@@ -75,4 +75,38 @@ def test_provenance_chain_across_merge():
 
 
 def test_merge_never_silently_discards():
-    pytest.xfail("H5: delete-vs-modify and divergent edits always yield Conflict rows — merge-spec.md")
+    """Invariant 6 (data-model.md): merge NEVER silently discards incompatible
+    changes — every both-sided divergence yields a Conflict row (merge-spec.md:
+    divergent edits -> conflict; delete-vs-modify -> conflict)."""
+    from backend.src.core.merge.three_way import merge_prose
+
+    base = (
+        "Alpha settled.\n\nBeta original claim.\n\nGamma original claim.\n\n"
+        "Delta original claim.\n\nEpsilon original claim."
+    )
+    ours = (
+        "Alpha settled.\n\nBeta original claim now.\n\n"
+        "Delta original claim.\n\nEpsilon original claim noted."
+    )
+    theirs = (
+        "Alpha settled.\n\nBeta original claim.\n\nGamma original claim later.\n\n"
+        "Delta original claim later."
+    )
+    result = merge_prose(base, ours, theirs)
+
+    assert result.state == "conflicts"
+    # one-sided changes auto-merge and BOTH survive (nothing dropped):
+    # ours rewrote Beta (1:0), theirs rewrote Delta (3:0)
+    assert "Beta original claim now." in result.merged_text
+    assert "Delta original claim later." in result.merged_text
+    # untouched sentence kept
+    assert "Alpha settled." in result.merged_text
+
+    # every both-sided divergence is surfaced as a Conflict row, never
+    # silently discarded: ours-delete-vs-theirs-edit (Gamma) and
+    # ours-edit-vs-theirs-delete (Epsilon)
+    assert [(c.sid, c.base_text, c.ours_text, c.theirs_text) for c in result.conflicts] == [
+        ("2:0", "Gamma original claim.", "", "Gamma original claim later."),
+        ("4:0", "Epsilon original claim.", "Epsilon original claim noted.", ""),
+    ]
+    assert len(result.conflicts) == 2
