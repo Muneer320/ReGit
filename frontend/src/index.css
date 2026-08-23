@@ -1,33 +1,36 @@
-/* ReGit design system — refined dark palette tuned for research tooling.
-   It stays faithful to the existing instrument-panel UI while improving contrast,
-   depth, and readability across the full surface area. */
+/* ReGit design system — GitHub-inspired with a softened Apple-like finish.
+   The goal is a premium research dashboard: crisp hierarchy, airy spacing,
+   subtle gradient depth, and recognizable GitHub language cues. */
 
 :root {
-  --bg0: #0b1120;          /* app background */
-  --bg1: #111b2d;          /* panels */
-  --bg2: #17263d;          /* raised: table headers, toolbars */
-  --bg3: #1d2d45;          /* hover / inputs */
-  --border: #2b3d5a;
-  --border-strong: #3a4f72;
-  --fg: #e7edf9;
-  --fg-dim: #b4c2d9;
-  --fg-faint: #8597b3;
-  --heading: #f6f9ff;
+  --bg0: #0d1117;          /* app background */
+  --bg1: #161b22;          /* panels */
+  --bg2: #1d2430;          /* raised: table headers, toolbars */
+  --bg3: #212b38;          /* hover / inputs */
+  --border: #30363d;
+  --border-strong: #3a4757;
+  --fg: #e6edf3;
+  --fg-dim: #b9c3cf;
+  --fg-faint: #8b98a9;
+  --heading: #f0f6fc;
 
-  --accent: #7dd3fc;       /* bright cyan-blue action color */
-  --accent-dim: #1f4d72;
-  --accent-soft: rgba(125, 211, 252, 0.12);
-  --violet: #b794f4;
-  --violet-soft: rgba(183, 148, 244, 0.12);
-  --green: #6ee7b7;
-  --green-bg: rgba(110, 231, 183, 0.12);
-  --green-border: rgba(110, 231, 183, 0.34);
-  --red: #fda4af;
-  --red-bg: rgba(253, 164, 175, 0.1);
-  --red-border: rgba(253, 164, 175, 0.28);
-  --amber: #fbbf24;
-  --amber-bg: rgba(251, 191, 36, 0.12);
-  --amber-border: rgba(251, 191, 36, 0.32);
+  --accent: #79c0ff;       /* GitHub blue with a softer Apple-ish glow */
+  --accent-dim: #1f6feb;
+  --accent-soft: rgba(121, 192, 255, 0.12);
+  --violet: #d2a8ff;
+  --violet-soft: rgba(210, 168, 255, 0.1);
+  --green: #56d364;
+  --green-bg: rgba(86, 211, 100, 0.12);
+  --green-border: rgba(86, 211, 100, 0.38);
+  --red: #ff7b72;
+  --red-bg: rgba(255, 123, 114, 0.1);
+  --red-border: rgba(255, 123, 114, 0.32);
+  --amber: #f7c948;
+  --amber-bg: rgba(247, 201, 72, 0.12);
+  --amber-border: rgba(247, 201, 72, 0.32);
+
+  --shadow-soft: 0 10px 30px rgba(1, 4, 9, 0.24);
+  --shadow-card: 0 10px 24px rgba(15, 23, 42, 0.16);
 
   --sans: -apple-system, 'Inter', system-ui, 'Segoe UI', sans-serif;
   --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
@@ -41,8 +44,8 @@ html, body { margin: 0; padding: 0; height: 100%; }
 body {
   font: 400 13px/1.5 var(--sans);
   background:
-    radial-gradient(circle at top, rgba(125, 211, 252, 0.08), transparent 28%),
-    linear-gradient(180deg, #0b1120 0%, #0c1221 100%);
+    radial-gradient(circle at top, rgba(121, 192, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, #0d1117 0%, #0f1723 100%);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
 }
@@ -73,14 +76,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   grid-template-rows: 42px 1fr;
   grid-template-areas: 'topbar topbar' 'sidebar main';
   height: 100vh;
+  background: rgba(13, 17, 23, 0.82);
 }
 
 .topbar {
   grid-area: topbar;
   display: flex; align-items: center; gap: 12px;
   padding: 0 14px;
-  background: var(--bg1);
+  background: rgba(22, 27, 34, 0.88);
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 .brand {
   display: flex; align-items: center; gap: 8px;
@@ -157,16 +163,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------------------------------------------------------------- panels */
 .panel {
-  background: var(--bg1);
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.97), rgba(17, 24, 35, 0.98));
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
 }
 .panel + .panel, .panel + * , * + .panel { margin-top: 12px; }
 .panel-head {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg2);
+  background: rgba(31, 36, 48, 0.7);
   font-family: var(--mono); font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-dim);
 }
@@ -197,17 +204,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* --------------------------------------------------------------- buttons */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 3px;
+  padding: 6px 12px; border-radius: 10px;
   border: 1px solid var(--border-strong);
-  background: var(--bg3); color: var(--fg);
-  font-size: 12px; font-weight: 520; line-height: 1.45;
-  transition: background 100ms ease, border-color 100ms ease;
+  background: rgba(33, 43, 56, 0.9); color: var(--fg);
+  font-size: 12px; font-weight: 600; line-height: 1.45;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
   white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
-.btn:hover { background: var(--bg2); border-color: var(--fg-faint); }
+.btn:hover { background: var(--bg2); border-color: var(--fg-faint); transform: translateY(-1px); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn.primary { background: var(--accent-dim); border-color: #46659e; color: #f2f6ff; }
-.btn.primary:hover:not(:disabled) { background: #3d5b91; }
+.btn.primary { background: linear-gradient(180deg, #2f81f7, #1f6feb); border-color: rgba(121, 192, 255, 0.35); color: #f0f7ff; box-shadow: 0 8px 18px rgba(31, 111, 235, 0.32); }
+.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3f8cf5, #236de2); }
 .btn.success { background: #245232; border-color: #347048; color: #d9f3e1; }
 .btn.success:hover:not(:disabled) { background: #2b603c; }
 .btn.danger { background: #55272a; border-color: #71383c; color: #ffd9d7; }
@@ -390,7 +398,8 @@ button.dashboard-stat-card:hover { border-color: var(--border-strong); backgroun
 }
 .profile-avatar-wrap {
   width: 128px; height: 128px; border-radius: 50%; overflow: hidden;
-  border: 1px solid var(--border-strong); background: var(--bg2); box-shadow: 0 0 0 5px rgba(110,160,246,.06);
+  border: 1px solid var(--border-strong); background: var(--bg2);
+  box-shadow: 0 0 0 5px rgba(121, 192, 255, 0.08), var(--shadow-soft);
 }
 .profile-avatar-wrap img {
   display: block; width: 100%; height: 100%; object-fit: cover;
@@ -400,22 +409,23 @@ button.dashboard-stat-card:hover { border-color: var(--border-strong); backgroun
 .profile-status {
   display: inline-flex; align-items: center; gap: 7px; color: var(--fg-dim); font-size: 10px;
   font-family: var(--mono); letter-spacing: 0.04em; text-transform: uppercase;
-  border: 1px solid var(--border-strong); border-radius: 3px; padding: 3px 7px;
+  border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 8px;
+  background: rgba(22, 27, 34, 0.8);
 }
 .status-dot {
   width: 9px; height: 9px; border-radius: 50%; background: var(--green);
-  box-shadow: 0 0 0 3px rgba(87,196,122,.12);
+  box-shadow: 0 0 0 3px rgba(86, 211, 100, 0.12);
 }
 .profile-actions { display: flex; gap: 8px; }
 .profile-actions .btn { min-width: 88px; justify-content: center; }
 .profile-tabs {
   display: flex; gap: 10px; border-bottom: 1px solid var(--border); margin-top: 10px; overflow-x: auto;
-  position: sticky; top: 0; z-index: 4; background: color-mix(in srgb, var(--bg0) 94%, transparent);
+  position: sticky; top: 0; z-index: 4; background: rgba(13, 17, 23, 0.82);
   backdrop-filter: blur(8px);
 }
 .profile-tabs button {
   border: 0; background: transparent; color: var(--fg-dim); padding: 12px 10px 11px; font-size: 12.5px; font-weight: 500;
-  border-bottom: 2px solid transparent; white-space: nowrap;
+  border-bottom: 2px solid transparent; white-space: nowrap; border-radius: 10px 10px 0 0;
 }
 .profile-tabs button.active {
   color: var(--heading); border-bottom-color: var(--accent);
