@@ -31,4 +31,4 @@ Fresh `data/` via `scripts/reset_demo.sh`; server on :8377; two browser tabs log
 **Close (15s).** "Git was designed for code. We asked what it would look like designed for research: typed artifacts, canonical identity, sentence-level merge, provenance as a primitive, version-aware retrieval. Next build: the full visual provenance graph + multi-agent editing branches."
 
 ## Fallbacks (rehearsed)
-Frontend dies → same scenes via `gr` CLI + scripts. WS dies → `scripts/replay_ops.py` convergence replay. Embeddings die → FTS5 mode banner. Everything dies → backup video + live `pytest` walk (the tests ARE the depth proof).
+Frontend dies → same scenes via `gr` CLI + `scripts/reindex.py` (offline). WS dies → `scripts/reindex.py` + CRDT convergence is proven in `tests/unit/test_collab.py` (shuffle replay) — point a judge at the live `pytest` output. Embeddings die → FTS5 keyword mode with degraded banner (handled in retrieval). Everything dies → live `pytest tests/` run as the depth proof (the tests ARE the engine's proof).

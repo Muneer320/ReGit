@@ -11,7 +11,7 @@
 ## Why (runner-up: LLM semantic diff / RAG answers)
 Decisive tradeoff: LLM-in-the-path is the wrapper trap. It is nondeterministic (breaks our exact-output tests), unverifiable under hostile questioning, and destroys the "research-native VCS" story — the entire win condition is depth the LLM can't fake. Judges asking "what part is AI-generated?" get a crisp, honest answer: "the boilerplate and, if you see it, that one labeled summary line. Every diff, merge, version, and citation you see is a deterministic algorithm we can walk through."
 
-## Human-owned vs AI-owned (enforced by ../planning/ownership-matrix.md)
+## Human-owned vs AI-owned (enforced by the README "AI usage" section)
 - Human (Muneer): object model, hashing/canonicalization, DAG/merge-base, alignment engine, 3-way merge, CRDT integration semantics, provenance semantics, invariants.
 - Human (Amrit): integration, UI composition, E2E flows, testing strategy execution, demo.
 - AI: everything else mechanical, always with tests + explanation.
