@@ -156,12 +156,13 @@ export function DashboardPage() {
               {repositories.map((repo) => (
                 <article className="repo-card" key={repo.name}>
                   <div className="repo-topline">
-                    <div className="repo-name-wrap">
-                      <Icon name="repo" size={13} />
-                      <h3>{repo.name}</h3>
+                      <div className="repo-name-wrap">
+                        <Icon name="repo" size={13} />
+                        <h3>{repo.name}</h3>
+                        <span className="repo-visibility">Public</span>
                     </div>
                     <button className="btn sm" type="button">
-                      <span className="star-mark">★</span>
+                       <Icon name="star" size={12} className="star-mark" />
                       Star
                     </button>
                   </div>
@@ -174,7 +175,7 @@ export function DashboardPage() {
                       {repo.language}
                     </span>
                     <span>
-                      <span className="star-mark small">★</span>
+                       <Icon name="star" size={11} className="star-mark small" />
                       {repo.stars}
                     </span>
                     <span>
@@ -187,8 +188,8 @@ export function DashboardPage() {
             </div>
           </section>
 
-          <section className="panel">
-            <div className="panel-head">Contribution activity</div>
+          <section className="panel contribution-panel">
+            <div className="panel-head"><span>Contribution activity</span><span className="panel-head-note">186 contributions in the last year</span></div>
             <div className="contrib-wrap">
               <div className="month-labels">
                 {months.map((month) => <span key={month}>{month}</span>)}

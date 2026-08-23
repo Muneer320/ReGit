@@ -12,6 +12,14 @@ import {
   Spinner,
   timeAgo,
 } from '../components/ui'
+import { Icon } from '../components/Icon'
+
+const repoFiles = [
+  { path: 'docs', type: 'folder', note: 'research documentation' },
+  { path: 'notes', type: 'folder', note: 'working notes and observations' },
+  { path: 'references', type: 'folder', note: 'sources and citations' },
+  { path: 'README.md', type: 'file', note: 'project overview' },
+]
 
 export function ArtifactPage({ artifactId }: { artifactId: string }) {
   const route = useRoute()
@@ -31,6 +39,7 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
 
   const [newBranchName, setNewBranchName] = useState('')
   const [creatingBranch, setCreatingBranch] = useState(false)
+  const [selectedFile, setSelectedFile] = useState('README.md')
 
   const load = useCallback(async () => {
     setError(null)
@@ -132,15 +141,37 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
               @ <Hash hash={headCid} />
             </span>
           )}
-          <button className="btn" onClick={() => navigate(`/art/${artifactId}/history?branch=${encodeURIComponent(branch)}`)}>
-            History
+           <button className="btn" onClick={() => navigate(`/art/${artifactId}/history?branch=${encodeURIComponent(branch)}`)}>
+             <Icon name="history" size={13} /> History
+           </button>
+           <button className="btn" onClick={() => navigate(`/art/${artifactId}/diff?branch=${encodeURIComponent(branch)}`)}>
+             <Icon name="diff" size={13} /> Diff
+           </button>
+           <button className="btn primary" onClick={() => navigate(`/art/${artifactId}/merge?ours=${encodeURIComponent(branch)}`)}>
+             <Icon name="merge" size={13} /> Merge
           </button>
-          <button className="btn" onClick={() => navigate(`/art/${artifactId}/diff?branch=${encodeURIComponent(branch)}`)}>
-            Diff
-          </button>
-          <button className="btn primary" onClick={() => navigate(`/art/${artifactId}/merge?ours=${encodeURIComponent(branch)}`)}>
-            Merge…
-          </button>
+        </div>
+      </div>
+
+      {/* branches */}
+      <div className="panel repository-browser">
+        <div className="panel-head">
+          <Icon name="code" size={13} /> Code
+          <span className="spacer" />
+          <span className="faint small">{repoFiles.length} entries</span>
+        </div>
+        <div className="repo-branch-toolbar">
+          <Badge variant="branch"><Icon name="branch" size={10} /> {branch}</Badge>
+          <span className="faint small">Browse the repository contents. History is available from the button above.</span>
+        </div>
+        <div className="repo-file-list">
+          {repoFiles.map((file) => (
+            <button className={`repo-file-row ${selectedFile === file.path ? 'selected' : ''}`} key={file.path} onClick={() => file.type === 'file' && setSelectedFile(file.path)}>
+              <Icon name={file.type === 'folder' ? 'chevron-right' : 'file'} size={14} />
+              <span className="repo-file-name">{file.path}{file.type === 'folder' && '/'}</span>
+              <span className="repo-file-note">{file.note}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -190,8 +221,8 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
       {/* content */}
       <div className="panel">
         <div className="panel-head">
-          Working copy · {branch}
-          <Hash hash={headCid ?? undefined} />
+           {selectedFile}
+           <Hash hash={headCid ?? undefined} />
           <span className="spacer" />
           {!editing && (
             <button className="btn sm" onClick={startEdit}>
@@ -200,8 +231,8 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
           )}
         </div>
         {!editing ? (
-          <div className="panel-body">
-            <pre className="content-preview">{content}</pre>
+           <div className="panel-body">
+             {selectedFile === 'README.md' ? <pre className="content-preview">{content}</pre> : <div className="state-block">Select `README.md` to preview the artifact content. This folder is represented in the demo repository tree.</div>}
           </div>
         ) : (
           <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

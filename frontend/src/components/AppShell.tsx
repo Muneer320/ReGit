@@ -5,6 +5,7 @@ import { useRoute, navigate } from '../lib/router'
 import { api } from '../lib/api'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
+import { Logo } from './Logo'
 
 const USERS = [
   { id: 'userA', color: '#57c47a' },
@@ -46,17 +47,20 @@ function NavItem({
   icon,
   label,
   active,
+  count,
   onClick,
 }: {
   icon: IconName
   label: string
   active?: boolean
+  count?: string | number
   onClick: () => void
 }) {
   return (
     <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}>
       <Icon name={icon} />
       {label}
+      {count !== undefined && <span className="nav-count">{count}</span>}
     </button>
   )
 }
@@ -115,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClick={() => navigate('/')}
           title="ReGit — version control for research"
         >
-          <img src="/regit-wordmark-light-bg.svg" alt="ReGit wordmark" className="brand-logo" />
+          <Logo />
           <span className="tagline">version control for research</span>
         </span>
         {artId && (
@@ -130,9 +134,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <aside className="sidebar">
+        <button className="sidebar-profile" onClick={() => navigate('/')}>
+          <span className="sidebar-avatar">M</span>
+          <span><b>Muneer</b><small>@muneer320</small></span>
+          <Icon name="chevron-right" size={12} />
+        </button>
         <div className="nav-section-label" style={{ paddingTop: 2 }}>Workspace</div>
         <NavItem icon="graph" label="Dashboard" active={onDashboard} onClick={() => navigate('/')} />
-        <NavItem icon="repo" label="Repositories" active={onWorkspace} onClick={() => navigate('/repositories')} />
+        <NavItem icon="repo" label="Repositories" count={4} active={onWorkspace} onClick={() => navigate('/repositories')} />
+        <NavItem icon="chat" label="Feed" count={3} active={route.segments[0] === 'feed'} onClick={() => navigate('/feed')} />
         <NavItem icon="search" label="Search" active={onSearch} onClick={() => navigate('/search')} />
         {artId && <ArtifactNav id={artId} />}
         <div className="sidebar-footnote">

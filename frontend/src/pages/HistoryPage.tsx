@@ -109,6 +109,7 @@ export function HistoryPage({ artifactId }: { artifactId: string }) {
       {!error && commits && commits.length > 0 && (
         <>
           <div className="panel">
+            <div className="history-panel-title"><span><Icon name="commit" size={14} /> Commit history</span><span>{commits.length} commits</span></div>
             <div className="timeline">
               {commits.map((c, i) => {
                 const isHead = i === 0

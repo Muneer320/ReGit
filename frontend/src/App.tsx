@@ -9,12 +9,14 @@ import { HistoryPage } from './pages/HistoryPage'
 import { DiffPage } from './pages/DiffPage'
 import { MergePage } from './pages/MergePage'
 import { SearchPage } from './pages/SearchPage'
+import { FeedPage } from './pages/FeedPage'
 
 function Routes() {
   const route = useRoute()
   const [first, second] = route.segments
 
   if (first === 'search') return <SearchPage />
+  if (first === 'feed') return <FeedPage />
   if (first === 'repositories' || first === 'workspace') return <WorkspacePage />
   if (!first) return <DashboardPage />
   if (first === 'art' && second) {

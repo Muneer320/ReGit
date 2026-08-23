@@ -23,6 +23,7 @@ export type IconName =
   | 'code'
   | 'graph'
   | 'dot'
+  | 'star'
 
 const PATHS: Record<IconName, JSX.Element> = {
   repo: (
@@ -119,6 +120,7 @@ const PATHS: Record<IconName, JSX.Element> = {
     </>
   ),
   dot: <circle cx="7" cy="7" r="2.4" fill="currentColor" stroke="none" />,
+  star: <path d="m7 1.7 1.65 3.35 3.7.54-2.68 2.61.63 3.69L7 10.15l-3.3 1.74.63-3.69-2.68-2.61 3.7-.54L7 1.7Z" />,
 }
 
 export function Icon({
