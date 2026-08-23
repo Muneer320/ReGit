@@ -60,7 +60,11 @@ from ..retrieval import service as retrieval
 # Paths / defaults
 # ---------------------------------------------------------------------------
 _BASE = Path(__file__).resolve().parents[3]          # repo root
-_FRONTEND = _BASE / "frontend"
+# Prefer the BUILT frontend (frontend/dist) when present — the built index.html
+# references hashed assets, so a single uvicorn process serves the whole app on
+# :8377 (the "one process, everything served" demo story). Fall back to the
+# source frontend/ only in dev when there's no dist.
+_FRONTEND = (_BASE / "frontend" / "dist") if (_BASE / "frontend" / "dist" / "index.html").exists() else (_BASE / "frontend")
 _ARTIFACT_KINDS = {"md", "txt", "chat", "pdf", "codebase"}
 _BLOB_TAG = {"md": "md", "txt": "txt", "chat": "chat", "pdf": "pdf", "codebase": "tree"}
 
