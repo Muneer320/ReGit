@@ -67,8 +67,11 @@
 ## 🚀 Quick start
 
 ```bash
-bash scripts/setup.sh                          # uv sync · model download · init
-uvicorn backend.src.api.main:app --port 8377   # backend + frontend, offline
+# cross-platform (Windows / macOS / Linux) — no bash needed:
+python scripts/setup.py        # or: py scripts/setup.py  (Windows)
+#   ...or on mac/linux with bash:  bash scripts/setup.sh
+
+uv run uvicorn backend.src.api.main:app --port 8377   # backend + frontend, offline
 cd frontend && npm install && npm run dev      # dev mode (optional, :5173)
 ```
 
