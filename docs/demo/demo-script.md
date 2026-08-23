@@ -12,15 +12,15 @@ Fresh `data/` via `scripts/reset_demo.sh`; server on :8377; two browser tabs log
 
 ## Scenes (5 minutes, rehearsed, each beat <30s provable)
 
-**S1 Research (45s).** `gr ingest fixtures/` → ChatGPT export + Claude export + PDF + notes.md load as 4 typed artifacts. *Beat:* show chat artifact = message list with roles, NOT a string. Show the ChatGPT re-export (different ids/timestamps) → **same commit id**. "Canonical identity: byte noise, same object."
+**S1 Research (45s).** `POST /api/ingest` with each file → ChatGPT export + Claude export + PDF + notes.md load as 4 typed artifacts. *Beat:* show chat artifact = message list with roles, NOT a string. Show the ChatGPT re-export (different ids/timestamps) → **same commit id**. "Canonical identity: byte noise, same object."
 
-**S2 Versioning (30s).** Edit notes.md in tab A (change a claim sentence), commit with message. `gr log` → chain; `gr verify` → chain recomputed live. "Immutable, content-addressed, tamper-evident."
+**S2 Versioning (30s).** Edit notes.md in tab A (change a claim sentence), commit with message. `GET /api/artifacts/{id}/history` → chain; `gr verify` → hashes recomputed live. "Immutable, content-addressed, tamper-evident."
 
-**S3 Semantic diff (45s).** `scripts/demo_semantic_diff.py` on the edit: sentences aligned, the edited claim shown as ONE edited sentence; reflowed paragraph → zero changes. Side-by-side: `git diff` on the same file shows line noise. Code diff on fixture: `renamed: compute_stats → compute_statistics`, one body modified — comment churn invisible. "No LLM. An alignment engine we own."
+**S3 Semantic diff (45s).** `GET /api/diff?from=&to=` on the edit: sentences aligned, the edited claim shown as ONE edited sentence; reflowed paragraph → zero changes. Side-by-side: `git diff` on the same file shows line noise. Code diff on fixture: `renamed: compute_stats → compute_statistics`, one body modified — comment churn invisible. "No LLM. An alignment engine we own."
 
 **S4 Branching (20s).** Fork `claims-review` branch at HEAD. Two research directions visible in branch list.
 
-**S5 Merge conflict (60s, CLIMAX 1).** Tab A (main) edits sentence 2; tab B (claims-review) edits sentence 2 differently; both commit. POST /merge → **conflict card**: base/ours/theirs of THE SENTENCE. Resolve via free edit → merge commit → `gr log --graph` shows 2 parents. "Conflicts are claims, not line markers."
+**S5 Merge conflict (60s, CLIMAX 1).** Tab A (main) edits sentence 2; tab B (claims-review) edits sentence 2 differently; both commit. POST /merge → **conflict card**: base/ours/theirs of THE SENTENCE. Resolve via free edit → merge commit → `GET /api/artifacts/{id}/history` shows the 2-parent merge commit. "Conflicts are claims, not line markers."
 
 **S6 Collaboration (45s).** Both tabs on same artifact+branch: live co-typing, presence chips, colored carets, independent undo. `commit_request` from tab B → both histories update. "CRDT absorbs typing races; the DAG absorbs research disagreements."
 

@@ -25,6 +25,26 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok", "version": "0.1.0"}
 
 
+def test_list_artifacts_returns_all_with_branches(client):
+    """GET /api/artifacts powers the workspace (server-side, survives reload —
+    replacing the frontend's brittle localStorage registry)."""
+    a = client.post("/api/artifacts", json={"kind": "md", "title": "A", "content": "x"},
+                    headers=hdr()).json()
+    b = client.post("/api/artifacts", json={"kind": "md", "title": "B", "content": "y"},
+                    headers=hdr()).json()
+    # add a second branch on A so branches show up
+    a_id = a["artifact_id"]
+    head = client.get(f"/api/artifacts/{a_id}", headers=hdr()).json()["branches"][0]["head"]
+    client.post("/api/branches", json={"artifact_id": a_id, "name": "experiment", "from_commit": head},
+                headers=hdr())
+    rows = client.get("/api/artifacts", headers=hdr())
+    assert rows.status_code == 200
+    arts = {r["id"]: r for r in rows.json()}
+    assert set(arts) == {a_id, b["artifact_id"]}
+    names = {br["name"] for br in arts[a_id]["branches"]}
+    assert {"main", "experiment"} <= names
+
+
 def test_root_artifact_roundtrip(client):
     r = client.post("/api/artifacts", json={
         "kind": "md", "title": "Notes", "content": "# One\n\nTwo.",

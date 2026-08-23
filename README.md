@@ -72,7 +72,7 @@ uvicorn backend.src.api.main:app --port 8377   # backend + frontend, offline
 cd frontend && npm install && npm run dev      # dev mode (optional, :5173)
 ```
 
-CLI: `python -m backend.src.cli init|commit|log|branch|checkout|diff|merge|verify|ingest`
+CLI: `python -m backend.src.cli init|seed|verify|show <artifact_id>`  *(offline demo fallback; richer flows live in the API/UI)*
 
 ---
 

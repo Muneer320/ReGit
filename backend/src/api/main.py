@@ -278,6 +278,29 @@ def create_artifact(
     return {"artifact_id": art_id, "root_commit_id": cid}
 
 
+@app.get("/api/artifacts")
+def list_artifacts(store: ObjectStore = Depends(get_store)) -> list[dict]:
+    """List every artifact with its branches — powers the workspace without a
+    brittle client-side registry (the original contract lacked this; the
+    frontend fell back to a localStorage registry that loses state on reload)."""
+    out = []
+    for _id, kind, title, source_id, _created in store.db.execute(
+        "SELECT id, kind, title, source_id, created_at FROM artifacts ORDER BY created_at DESC"
+    ):
+        branches = [
+            {"name": b, "head": h}
+            for b, h in store.db.execute(
+                "SELECT name, head_commit_id FROM branches WHERE artifact_id=? ORDER BY name",
+                (_id,),
+            )
+        ]
+        out.append({
+            "id": _id, "kind": kind, "title": title,
+            "branches": branches, "source_id": source_id,
+        })
+    return out
+
+
 @app.get("/api/artifacts/{artifact_id}")
 def get_artifact(artifact_id: str, store: ObjectStore = Depends(get_store)) -> dict:
     row = _artifact(store, artifact_id)
