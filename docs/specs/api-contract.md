@@ -6,6 +6,9 @@ Base: `http://localhost:8377/api`. JSON in/out. Errors: `{error: {code, message}
 ### POST /artifacts
 Req `{kind, title, content?, source_id?}` → 201 `{artifact_id, root_commit_id}`. Creates root commit. 400 on bad kind.
 
+### GET /artifacts
+Lists every artifact → `[{id, kind, title, branches: [{name, head}], source_id}]` (newest first). Powers the workspace server-side (survives page reload).
+
 ### GET /artifacts/:id
 → `{id, kind, title, branches: [{name, head}], source_id}`. 404 unknown id.
 
