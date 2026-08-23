@@ -1,8 +1,15 @@
 import { navigate } from '../lib/router'
+import { useState } from 'react'
 import { useApp } from '../state/store'
 import { Icon } from '../components/Icon'
 
-const profileTabs = ['Overview', 'Repositories', 'Projects', 'Packages', 'Stars']
+const profileTabs = [
+  { label: 'Overview' },
+  { label: 'Repositories', count: 4 },
+  { label: 'Projects', count: 3 },
+  { label: 'Packages', count: 6 },
+  { label: 'Stars', count: 18 },
+]
 
 const repositories = [
   {
@@ -39,11 +46,12 @@ const repositories = [
   },
 ]
 
-const contributionLevels = [
-  0, 0, 0, 0, 1, 0, 2, 3, 2, 1, 3, 0, 2, 4, 0, 1, 2, 5, 2, 0, 1, 3, 0, 2, 1, 4,
-  2, 0, 3, 2, 1, 0, 2, 4, 1, 0, 3, 2, 0, 1, 2, 4, 3, 1, 0, 2, 3, 4, 2, 1, 1, 0,
-  2, 4, 1, 0, 3, 1,
-]
+const contributionLevels = Array.from({ length: 52 * 7 }, (_, index) => {
+  const week = Math.floor(index / 7)
+  const day = index % 7
+  const value = (week * 13 + day * 7 + week * day) % 17
+  return value < 5 ? 0 : value < 8 ? 1 : value < 11 ? 2 : value < 14 ? 3 : value < 16 ? 4 : 5
+})
 
 const activity = [
   'Updated the diff alignment model for research artifacts and notes.',
@@ -51,8 +59,19 @@ const activity = [
   'Merged a collaborative workspace proposal for multi-user annotation sessions.',
 ]
 
+const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+
+const history = [
+  { repo: 'git-for-research', message: 'Refine GitHub-style research dashboard', branch: 'amrit', when: 'today', hash: 'a1e9324' },
+  { repo: 'realtime-collab', message: 'Add presence indicators to shared editor', branch: 'main', when: '2 days ago', hash: 'ee4bf2e' },
+  { repo: 'retrieval-indexer', message: 'Improve provenance metadata for search results', branch: 'main', when: '5 days ago', hash: 'c82d9af' },
+  { repo: 'diff-visualizer', message: 'Show sentence-level change markers', branch: 'feature/markers', when: '1 week ago', hash: '7ab41c0' },
+]
+
 export function DashboardPage() {
   const { connection } = useApp()
+  const [historyOpen, setHistoryOpen] = useState(true)
+  const [activeTab, setActiveTab] = useState('Overview')
   const branchCount = 18
 
   return (
@@ -82,27 +101,28 @@ export function DashboardPage() {
       </section>
 
       <nav className="profile-tabs" aria-label="Profile sections">
-        {profileTabs.map((tab, index) => (
-          <button key={tab} className={index === 0 ? 'active' : ''} type="button">
-            {tab}
+        {profileTabs.map((tab) => (
+          <button key={tab.label} className={activeTab === tab.label ? 'active' : ''} type="button" onClick={() => setActiveTab(tab.label)}>
+            {tab.label}
+            {tab.count !== undefined && <span className="profile-tab-count">{tab.count}</span>}
           </button>
         ))}
       </nav>
 
-      <div className="profile-grid">
-        <aside className="profile-sidebar">
-          <section className="panel profile-card">
-            <div className="panel-head">About</div>
-            <div className="profile-card-body">
-              <p>
-                Building tools for human-centered research workflows, documentation, and open
-                collaboration across code, notes, and experiments.
-              </p>
-            </div>
-          </section>
+      {activeTab !== 'Overview' && <ProfileTabView tab={activeTab} />}
 
+      {activeTab === 'Overview' && <>
+      <section className="panel profile-about-wide">
+        <div className="panel-head">About</div>
+        <div className="profile-about-content">
+          <p>Building tools for human-centered research workflows, documentation, and open collaboration across code, notes, and experiments.</p>
+          <div className="about-links"><span><Icon name="repo" size={12} /> Research-native version control</span><span><Icon name="branch" size={12} /> Open collaboration</span><span><Icon name="search" size={12} /> Provenance-aware retrieval</span></div>
+        </div>
+      </section>
+
+      <div className="profile-details-row">
           <section className="panel profile-card">
-            <div className="panel-head">Highlights</div>
+            <div className="panel-head">Profile details</div>
             <div className="profile-card-body">
               <ul className="profile-list">
                 <li>Research-native version control</li>
@@ -120,9 +140,9 @@ export function DashboardPage() {
               <span>CS</span>
             </div>
           </section>
-        </aside>
+      </div>
 
-        <main className="profile-main">
+      <main className="profile-main profile-content">
           <section className="panel">
             <div className="panel-head">
               <span>Popular repositories</span>
@@ -170,20 +190,17 @@ export function DashboardPage() {
           <section className="panel">
             <div className="panel-head">Contribution activity</div>
             <div className="contrib-wrap">
-              <div className="day-labels">
-                <span>Mon</span>
-                <span>Wed</span>
-                <span>Fri</span>
+              <div className="month-labels">
+                {months.map((month) => <span key={month}>{month}</span>)}
               </div>
-              <div className="contrib-grid" aria-label="Contribution graph">
-                {contributionLevels.map((level, index) => (
-                  <span
-                    key={`${level}-${index}`}
-                    className={`contrib-cell level-${level}`}
-                    title={`Contribution level ${level}`}
-                  />
-                ))}
+              <div className="contrib-chart-row">
+                <div className="weekday-labels"><span>Mon</span><span>Wed</span><span>Fri</span></div>
+                <div className="contrib-grid" aria-label="Contribution graph">
+                  {contributionLevels.map((level, index) => <span key={`${level}-${index}`} className={`contrib-cell level-${level}`} title={`Contribution level ${level}`} />)}
+                </div>
               </div>
+              <p className="contrib-total"><b>186 contributions</b> in the last year</p>
+              <div className="contrib-legend"><span>Less</span>{[0, 1, 2, 3, 4, 5].map((level) => <i key={level} className={`contrib-cell level-${level}`} />)}<span>More</span></div>
             </div>
 
             <div className="activity-list">
@@ -195,8 +212,29 @@ export function DashboardPage() {
               ))}
             </div>
           </section>
-        </main>
-      </div>
+
+          <details className="panel dashboard-history" open={historyOpen} onToggle={(event) => setHistoryOpen(event.currentTarget.open)}>
+            <summary className="panel-head">
+              <span>History</span>
+              <span className="panel-head-note">Recent activity across repositories</span>
+              <Icon name={historyOpen ? 'chevron-down' : 'chevron-right'} size={12} />
+            </summary>
+            <div className="history-list">
+              {history.map((item) => (
+                <button className="history-row" key={`${item.repo}-${item.hash}`} onClick={() => navigate('/repositories')}>
+                  <span className="history-commit-icon"><Icon name="commit" size={13} /></span>
+                  <span className="history-copy">
+                    <b>{item.message}</b>
+                    <span><strong>{item.repo}</strong> · <span className="history-branch">{item.branch}</span> · {item.when}</span>
+                  </span>
+                  <code>{item.hash}</code>
+                  <Icon name="chevron-right" size={12} />
+                </button>
+              ))}
+            </div>
+            <button className="history-more" onClick={() => navigate('/repositories')}>Show more activity <Icon name="chevron-right" size={12} /></button>
+          </details>
+      </main>
 
       <div className="profile-summary-row">
         <div className="mini-stat-card">
@@ -223,6 +261,46 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+      </>}
     </div>
+  )
+}
+
+const tabDemoData: Record<string, { title: string; detail: string; meta: string }[]> = {
+  Projects: [
+    { title: 'ReGit research workspace', detail: 'Track ingestion, semantic diff, and merge milestones.', meta: 'Active · 72% complete' },
+    { title: 'Provenance-first retrieval', detail: 'Make every search result traceable to its source commit.', meta: 'Active · 4 contributors' },
+    { title: 'Collaborative lab notes', detail: 'Shared editing and review flows for distributed teams.', meta: 'Planning' },
+  ],
+  Packages: [
+    { title: '@regit/semantic-diff', detail: 'Sentence-level alignment for research prose.', meta: 'v0.8.2 · TypeScript' },
+    { title: '@regit/merge-engine', detail: 'Three-way merge decisions with explicit conflicts.', meta: 'v0.6.1 · Python' },
+    { title: '@regit/provenance', detail: 'Citation and content-addressed source metadata.', meta: 'v0.4.0 · Rust' },
+  ],
+  Stars: [
+    { title: 'open-research/observable-notebooks', detail: 'Reproducible notebooks with reviewable history.', meta: 'TypeScript · starred 2 days ago' },
+    { title: 'lab-tools/claim-mapper', detail: 'Map claims, evidence, and references across experiments.', meta: 'Python · starred 1 week ago' },
+    { title: 'papertrail/markdown-diff', detail: 'Readable diffs for long-form technical writing.', meta: 'Go · starred 2 weeks ago' },
+  ],
+}
+
+function ProfileTabView({ tab }: { tab: string }) {
+  if (tab === 'Repositories') {
+    return (
+      <section className="panel tab-demo-panel">
+        <div className="panel-head"><span>Repositories</span><span className="panel-head-note">4 repositories</span></div>
+        <div className="tab-repo-list">
+          {repositories.map((repo) => <button className="tab-repo-row" key={repo.name} onClick={() => navigate('/repositories')}><Icon name="repo" size={14} /><span><b>{repo.name}</b><small>{repo.description}</small></span><span className="tab-row-meta">{repo.language} · ★ {repo.stars}</span><Icon name="chevron-right" size={12} /></button>)}
+        </div>
+      </section>
+    )
+  }
+  return (
+    <section className="panel tab-demo-panel">
+      <div className="panel-head"><span>{tab}</span><span className="panel-head-note">{tabDemoData[tab]?.length ?? 0} items</span></div>
+      <div className="tab-demo-list">
+        {(tabDemoData[tab] ?? []).map((item) => <button className="tab-demo-row" key={item.title}><span className="tab-demo-icon"><Icon name={tab === 'Projects' ? 'graph' : tab === 'Packages' ? 'file' : 'commit'} size={14} /></span><span><b>{item.title}</b><small>{item.detail}</small></span><em>{item.meta}</em><Icon name="chevron-right" size={12} /></button>)}
+      </div>
+    </section>
   )
 }
