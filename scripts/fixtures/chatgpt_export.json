@@ -1,21 +1,52 @@
 [
   {
-    "title": "GD instability discussion",
-    "create_time": 1718000000.0,
+    "title": "Learning rate instability in deep nets",
+    "create_time": 1721000000.0,
     "mapping": {
       "root": {"id": "root", "parent": null, "children": ["m1"], "message": null},
       "m1": {"id": "m1", "parent": "root", "children": ["m2"],
              "message": {"author": {"role": "user"},
-                         "content": {"content_type": "text", "parts": ["Why does gradient descent diverge at lr 0.1?"]},
-                         "create_time": 1718000001.0}},
+                         "content": {"content_type": "text", "parts": ["I trained a small MLP on CIFAR-10 and loss spikes to NaN at lr=0.1 every few hundred steps. Larger batch sizes make it worse. Any idea why the spikes are irregular instead of just early divergence?"]},
+                         "create_time": 1721000001.0}},
       "m2": {"id": "m2", "parent": "m1", "children": ["m3"],
              "message": {"author": {"role": "assistant"},
-                         "content": {"content_type": "text", "parts": ["Because the step size exceeds 2/L where L is the local Lipschitz constant of the gradient."]},
-                         "create_time": 1718000002.0}},
-      "m3": {"id": "m3", "parent": "m2", "children": [],
+                         "content": {"content_type": "text", "parts": ["Irregular NaN spikes usually mean you are oscillating on the margin of the stability region, not sitting past it. At that boundary the update can momentarily exceed the local curvature bound and blow up, then recover once the gradient direction swings back."]},
+                         "create_time": 1721000002.0}},
+      "m3": {"id": "m3", "parent": "m2", "children": ["m4"],
              "message": {"author": {"role": "user"},
-                         "content": {"content_type": "text", "parts": ["Does Adam fix this?"]},
-                         "create_time": 1718000003.0}}
+                         "content": {"content_type": "text", "parts": ["So is the practical rule to keep lr below 2/L? A colleague said Adam handles the spikes automatically."]},
+                         "create_time": 1721000003.0}},
+      "m4": {"id": "m4", "parent": "m3", "children": ["m5"],
+             "message": {"author": {"role": "assistant"},
+                         "content": {"content_type": "text", "parts": ["2/L is the heuristic for full-batch GD. For SGD the effective curvature per minibatch is smaller and noisier, so you get both margin collisions and recoveries. Adam's per-parameter normalization does damp the spikes, but it does not remove the underlying instability: with a bad global lr even Adam will eventually hit NaN on a loss spike."]},
+                         "create_time": 1721000004.0}},
+      "m5": {"id": "m5", "parent": "m4", "children": [],
+             "message": {"author": {"role": "user"},
+                         "content": {"content_type": "text", "parts": ["OK, so a warmup plus a conservative lr seems safer than relying on the optimizer. Thanks."]},
+                         "create_time": 1721000005.0}}
+    }
+  },
+  {
+    "title": "Surface code logical error threshold",
+    "create_time": 1719000000.0,
+    "mapping": {
+      "root": {"id": "root", "parent": null, "children": ["u1"], "message": null},
+      "u1": {"id": "u1", "parent": "root", "children": ["a1"],
+             "message": {"author": {"role": "user"},
+                         "content": {"content_type": "text", "parts": ["I am reading about the surface code threshold near 1% per physical qubit. Is the 1% number for depolarising noise specifically, and does circuit-level noise push it lower?"]},
+                         "create_time": 1719000001.0}},
+      "a1": {"id": "a1", "parent": "u1", "children": ["u2"],
+             "message": {"author": {"role": "assistant"},
+                         "content": {"content_type": "text", "parts": ["The ~0.9-1.1% threshold assumes the code-capacity model with depolarising noise. Under circuit-level noise, including gate and measurement errors, the effective threshold drops to roughly 0.4-0.6% depending on the decoder and the error model."]},
+                         "create_time": 1719000002.0}},
+      "u2": {"id": "u2", "parent": "a1", "children": ["a2"],
+             "message": {"author": {"role": "user"},
+                         "content": {"content_type": "text", "parts": ["Would a neural decoder change that, or is the threshold fixed by the code itself?"]},
+                         "create_time": 1719000003.0}},
+      "a2": {"id": "a2", "parent": "u2", "children": [],
+             "message": {"author": {"role": "assistant"},
+                         "content": {"content_type": "text", "parts": ["The threshold is a property of the code under a noise model, but a good decoder can operate closer to it. Neural decoders mostly close the gap between naive and optimal decoding; they do not raise the code threshold itself."]},
+                         "create_time": 1719000004.0}}
     }
   }
 ]
