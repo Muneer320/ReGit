@@ -227,7 +227,7 @@ class SearchService:
                 )
             }
         out: dict[str, dict] = {}
-        for chunk_id, art_id, branch, introduced, sid_range, _replaces, _kind, src_id, text in rows:
+        for chunk_id, art_id, branch, introduced, sid_range, _replaces, kind_, src_id, text in rows:
             art = artifacts.get(art_id)
             src = sources.get(src_id) if src_id else None
             out[chunk_id] = {
@@ -236,6 +236,7 @@ class SearchService:
                 "artifact_id": art_id,
                 "artifact_title": art[0] if art else "",
                 "branch": branch,
+                "kind": kind_,
                 "introduced_in_commit": introduced,
                 "sid_range": sid_range,
                 "source": {"type": src[0], "filename": src[1]} if src else None,

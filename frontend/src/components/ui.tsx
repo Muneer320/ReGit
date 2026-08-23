@@ -26,7 +26,7 @@ export function KindBadge({ kind }: { kind: string }) {
       {kind === 'chat' && 'CHAT'}
       {kind === 'pdf' && 'PDF'}
       {kind === 'codebase' && 'CODE'}
-      {!['md', 'txt', 'chat', 'pdf', 'codebase'].includes(kind) && kind.toUpperCase()}
+      {kind && !['md', 'txt', 'chat', 'pdf', 'codebase'].includes(kind) && kind.toUpperCase()}
     </span>
   )
 }
