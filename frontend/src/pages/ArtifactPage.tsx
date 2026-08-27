@@ -35,6 +35,7 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
   const [selectedFile, setSelectedFile] = useState('')
   const [repoFiles, setRepoFiles] = useState<RepositoryEntry[]>([])
   const [folderName, setFolderName] = useState('')
+  const [currentFolder, setCurrentFolder] = useState('')
   const [uploading, setUploading] = useState(false)
 
   const load = useCallback(async () => {
@@ -130,8 +131,9 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
     if (!files?.length) return
     setUploading(true)
     try {
-      const result = await api.uploadFiles(artifactId, Array.from(files))
-      toast(`Uploaded ${result.files.length} file${result.files.length === 1 ? '' : 's'}`, 'success')
+      const result = await api.uploadFiles(artifactId, Array.from(files), currentFolder)
+      const failed = result.errors?.length ?? 0
+      toast(`Uploaded ${result.files.length - failed} file${result.files.length - failed === 1 ? '' : 's'}${failed ? `; ${failed} failed` : ''}`, failed ? 'error' : 'success')
       await load()
     } catch (e) {
       toast(`Upload failed: ${e instanceof Error ? e.message : String(e)}`, 'error')
@@ -196,7 +198,10 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
         <div className="repo-file-list">
           {repoFiles.map((file) => (
             <button className={`repo-file-row ${selectedFile === file.path ? 'selected' : ''}`} key={`${file.type}:${file.path}`} onClick={() => {
-                if (file.type !== 'file') return
+                if (file.type !== 'file') {
+                  setCurrentFolder(file.path)
+                  return
+                }
                 if (file.artifact_id && file.artifact_id !== artifactId) navigate(`/art/${file.artifact_id}`)
                 else setSelectedFile(file.path)
               }}>
@@ -208,6 +213,7 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
           {repoFiles.length === 0 && <div className="state-block">This repository has no entries yet.</div>}
         </div>
         <div className="panel-body btn-row" style={{ borderTop: '1px solid var(--border)' }}>
+          <span className="faint small">destination: {currentFolder || '/'}</span>
           <input className="input" placeholder="new/folder/path" value={folderName} onChange={(e) => setFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addFolder()} />
           <button className="btn" onClick={addFolder} disabled={!folderName.trim()}>+ Folder</button>
           <label className="btn primary" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
