@@ -16,6 +16,7 @@ import type {
   IngestResponse,
   IngestType,
   MergeResponse,
+  RepositoryEntry,
   Resolution,
   ResolveResponse,
   SearchResult,
@@ -52,7 +53,9 @@ export function setCurrentUser(u: string) {
 type Headers = Record<string, string>
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Headers = { 'Content-Type': 'application/json' }
+  const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData
+  const headers: Headers = {}
+  if (!isMultipart) headers['Content-Type'] = 'application/json'
   headers['X-User'] = currentUser()
 
   let res: Response
@@ -60,7 +63,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isMultipart ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'NETWORK', 'backend unreachable')
@@ -156,6 +159,20 @@ export const api = {
 
   async getArtifact(id: string): Promise<Artifact> {
     return request<Artifact>('GET', `/artifacts/${id}`)
+  },
+
+  tree: (id: string) => request<RepositoryEntry[]>('GET', `/artifacts/${id}/tree`),
+
+  createFolder: (id: string, path: string) =>
+    request<{ path: string; type: 'folder' }>('POST', `/artifacts/${id}/folders`, { path }),
+
+  uploadFiles: async (id: string, files: File[], path = '') => {
+    const form = new FormData()
+    files.forEach((file) => form.append('files', file))
+    form.append('path', path)
+    return request<{ files: { path: string; artifact_id?: string; commit_id?: string; error?: string }[]; errors: { path: string; error: string }[] }>(
+      'POST', `/artifacts/${id}/files`, form,
+    )
   },
 
   async createArtifact(body: { kind: string; title: string; content?: string }): Promise<{

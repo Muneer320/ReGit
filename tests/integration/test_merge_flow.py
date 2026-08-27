@@ -52,14 +52,54 @@ def test_live_merge_conflict_and_resolve(client):
                       json={"resolutions": [{"conflict_id": c["id"], "resolution": "ours"}]})
     assert res.status_code == 200
     rc = res.json()["result_commit_id"]
-    assert rc
     store = client.app.state.store
     parents = [p[0] for p in store.db.execute(
         "SELECT parent_id FROM commit_parents WHERE commit_id=?", (rc,))]
     assert len(parents) == 2  # merge commit
-    # resolution landed in the final text
-    assert "deeper models" in res.json()["final_text"]  # ours = appends lr=0.05
-    # double-resolve -> 409
+    assert "deeper models" in res.json()["final_text"]
     again = client.post(f"/api/merge/{merge_id}/resolve", headers={"X-User": "muneer"},
                         json={"resolutions": [{"conflict_id": c["id"], "resolution": "theirs"}]})
     assert again.status_code == 409
+
+
+def test_repository_tree_folder_and_file_upload(client):
+    root = client.post(
+        "/api/ingest", headers={"X-User": "muneer"},
+        files={"file": ("README.md", b"# root\n", "text/markdown")},
+        data={"type": "markdown"},
+    )
+    assert root.status_code == 201
+    artifact_id = root.json()["artifact_ids"][0]
+
+    folder = client.post(
+        f"/api/artifacts/{artifact_id}/folders", headers={"X-User": "muneer"},
+        json={"path": "research/notes"},
+    )
+    assert folder.status_code == 201
+
+    uploaded = client.post(
+        f"/api/artifacts/{artifact_id}/files", headers={"X-User": "muneer"},
+        files=[
+            ("files", ("finding.md", b"# finding\n", "text/markdown")),
+            ("files", ("data.txt", b"measurement\n", "text/plain")),
+        ],
+        data={"path": "research/notes"},
+    )
+    assert uploaded.status_code == 201
+    assert [item["path"] for item in uploaded.json()["files"]] == [
+        "research/notes/finding.md", "research/notes/data.txt"
+    ]
+
+    tree = client.get(f"/api/artifacts/{artifact_id}/tree")
+    assert tree.status_code == 200
+    assert {(item["path"], item["type"]) for item in tree.json()} == {
+        ("research", "folder"),
+        ("research/notes", "folder"),
+        ("research/notes/finding.md", "file"),
+        ("research/notes/data.txt", "file"),
+    }
+
+    rejected = client.post(
+        f"/api/artifacts/{artifact_id}/folders", json={"path": "../escape"}
+    )
+    assert rejected.status_code == 400

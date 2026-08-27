@@ -221,6 +221,10 @@ class BranchCreate(BaseModel):
     from_commit: str | None = None
 
 
+class FolderCreate(BaseModel):
+    path: str
+
+
 class CheckoutBody(BaseModel):
     artifact_id: str
     branch: str = "main"
@@ -319,6 +323,115 @@ def get_artifact(artifact_id: str, store: ObjectStore = Depends(get_store)) -> d
         )
     ]
     return {"id": _id, "kind": kind, "title": title, "branches": branches, "source_id": source_id}
+
+
+def _repo_path(path: str) -> str:
+    """Normalize a repository-relative path and reject traversal."""
+    value = (path or "").replace("\\\\", "/").strip(" /")
+    parts = [part for part in value.split("/") if part not in ("", ".")]
+    if not parts or any(part == ".." or "\\x00" in part for part in parts):
+        raise ApiError(400, "BAD_PATH", "path must be a non-empty repository-relative path")
+    return "/".join(parts)
+
+
+@app.get("/api/artifacts/{artifact_id}/tree")
+def repository_tree(artifact_id: str, store: ObjectStore = Depends(get_store)) -> list[dict]:
+    if _artifact(store, artifact_id) is None:
+        raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
+    rows = list(store.db.execute(
+        "SELECT path, entry_type, artifact_id FROM repository_entries "
+        "WHERE repository_id=? ORDER BY path, entry_type", (artifact_id,)
+    ))
+    if rows:
+        return [{"path": p, "type": t, "artifact_id": a} for p, t, a in rows]
+    row = store.db.execute("SELECT title FROM artifacts WHERE id=?", (artifact_id,)).fetchone()
+    return [{"path": row[0] or artifact_id, "type": "file", "artifact_id": artifact_id}]
+
+
+@app.post("/api/artifacts/{artifact_id}/folders", status_code=201)
+def create_repository_folder(
+    artifact_id: str, body: FolderCreate, user: str = Depends(get_user),
+    store: ObjectStore = Depends(get_store),
+) -> dict:
+    if _artifact(store, artifact_id) is None:
+        raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
+    path = _repo_path(body.path)
+    try:
+        with store._tx() as db:
+            parts = path.split("/")
+            for index in range(1, len(parts) + 1):
+                current = "/".join(parts[:index])
+                db.execute(
+                    "INSERT OR IGNORE INTO repository_entries(id, repository_id, path, entry_type, artifact_id, created_at) VALUES (?,?,?,?,?,?)",
+                    (new_id("ent_"), artifact_id, current, "folder", None, _now()),
+                )
+    except Exception as exc:
+        if "UNIQUE" in str(exc).upper():
+            raise ApiError(409, "PATH_EXISTS", f"repository path already exists: {path}") from exc
+        raise
+    return {"path": path, "type": "folder"}
+
+
+@app.post("/api/artifacts/{artifact_id}/files", status_code=201)
+async def upload_repository_files(
+    artifact_id: str, files: list[UploadFile] = File(...), path: str = Form(""),
+    user: str = Depends(get_user), store: ObjectStore = Depends(get_store),
+) -> dict:
+    if _artifact(store, artifact_id) is None:
+        raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
+    folder = "" if not path.strip() else _repo_path(path)
+    if folder:
+        with store._tx() as db:
+            parts = folder.split("/")
+            for index in range(1, len(parts) + 1):
+                current = "/".join(parts[:index])
+                db.execute(
+                    "INSERT OR IGNORE INTO repository_entries(id, repository_id, path, entry_type, artifact_id, created_at) VALUES (?,?,?,?,?,?)",
+                    (new_id("ent_"), artifact_id, current, "folder", None, _now()),
+                )
+    results = []
+    for upload in files:
+        filename = _repo_path(upload.filename or "upload")
+        repo_path = f"{folder}/{filename}" if folder else filename
+        data = await upload.read()
+        lower_name = filename.lower()
+        kind = (
+            "pdf" if lower_name.endswith(".pdf") else
+            "claude" if lower_name.endswith(".jsonl") else
+            "chatgpt" if lower_name.endswith(".json") else
+            "txt" if lower_name.endswith(".txt") else
+            "md" if lower_name.endswith(".md") else
+            "codebase" if lower_name.endswith((".zip", ".tgz", ".tar")) else
+            "md"
+        )
+        try:
+            outcome = pipeline.ingest(store, kind, filename, data, user)
+            pipeline.commit_roots(store, outcome, user, f"upload {repo_path}")
+        except ParseError as exc:
+            results.append({"path": repo_path, "error": str(exc)})
+            continue
+        created = outcome.artifacts[0]
+        with store._tx() as db:
+            db.execute(
+                "INSERT OR REPLACE INTO repository_entries(id, repository_id, path, entry_type, artifact_id, created_at) VALUES (?,?,?,?,?,?)",
+                (new_id("ent_"), artifact_id, repo_path, "file", created.artifact_id, _now()),
+            )
+        results.append({"path": repo_path, "artifact_id": created.artifact_id, "commit_id": created.commit_id})
+    return {"files": results, "errors": [item for item in results if "error" in item]}
+
+
+@app.delete("/api/artifacts/{artifact_id}/tree/{path:path}", status_code=204)
+def delete_repository_entry(
+    artifact_id: str, path: str, user: str = Depends(get_user), store: ObjectStore = Depends(get_store),
+) -> Response:
+    if _artifact(store, artifact_id) is None:
+        raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
+    normalized = _repo_path(path)
+    with store._tx() as db:
+        cur = db.execute("DELETE FROM repository_entries WHERE repository_id=? AND path=?", (artifact_id, normalized))
+    if cur.rowcount == 0:
+        raise ApiError(404, "PATH_NOT_FOUND", f"unknown repository path {normalized}")
+    return Response(status_code=204)
 
 
 @app.delete("/api/artifacts/{artifact_id}", status_code=204)

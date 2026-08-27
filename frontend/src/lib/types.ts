@@ -21,6 +21,12 @@ export interface Artifact {
   source_id: string | null
 }
 
+export interface RepositoryEntry {
+  path: string
+  type: 'file' | 'folder'
+  artifact_id?: string | null
+}
+
 /** Locally-registered artifact metadata (the contract has no list endpoint). */
 export interface ArtifactRecord {
   id: string

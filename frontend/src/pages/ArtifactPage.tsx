@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { Artifact, BranchRef } from '../lib/types'
+import type { Artifact, BranchRef, RepositoryEntry } from '../lib/types'
 import { useApp } from '../state/store'
 import { useRoute, navigate } from '../lib/router'
 import {
@@ -13,13 +13,6 @@ import {
   timeAgo,
 } from '../components/ui'
 import { Icon } from '../components/Icon'
-
-const repoFiles = [
-  { path: 'docs', type: 'folder', note: 'research documentation' },
-  { path: 'notes', type: 'folder', note: 'working notes and observations' },
-  { path: 'references', type: 'folder', note: 'sources and citations' },
-  { path: 'README.md', type: 'file', note: 'project overview' },
-]
 
 export function ArtifactPage({ artifactId }: { artifactId: string }) {
   const route = useRoute()
@@ -39,15 +32,25 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
 
   const [newBranchName, setNewBranchName] = useState('')
   const [creatingBranch, setCreatingBranch] = useState(false)
-  const [selectedFile, setSelectedFile] = useState('README.md')
+  const [selectedFile, setSelectedFile] = useState('')
+  const [repoFiles, setRepoFiles] = useState<RepositoryEntry[]>([])
+  const [folderName, setFolderName] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
     try {
-      const a = await api.getArtifact(artifactId)
+      const [a, bs, tree] = await Promise.all([
+        api.getArtifact(artifactId),
+        api.listBranches(artifactId),
+        api.tree(artifactId),
+      ])
       setArtifact(a)
-      const bs = await api.listBranches(artifactId)
       setBranches(bs)
+      setRepoFiles(tree)
+      if (!selectedFile && tree.find((entry) => entry.type === 'file')) {
+        setSelectedFile(tree.find((entry) => entry.type === 'file')?.path ?? '')
+      }
       const target = bs.find((b) => b.name === branch) ?? bs.find((b) => b.name === 'main') ?? bs[0]
       if (!target) return
       const co = await api.checkout({ artifact_id: artifactId, branch: target.name })
@@ -110,6 +113,33 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
     }
   }
 
+  const addFolder = async () => {
+    const name = folderName.trim()
+    if (!name) return
+    try {
+      await api.createFolder(artifactId, name)
+      setFolderName('')
+      toast(`Created folder ${name}`, 'success')
+      await load()
+    } catch (e) {
+      toast(`Folder creation failed: ${e instanceof Error ? e.message : String(e)}`, 'error')
+    }
+  }
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    try {
+      const result = await api.uploadFiles(artifactId, Array.from(files))
+      toast(`Uploaded ${result.files.length} file${result.files.length === 1 ? '' : 's'}`, 'success')
+      await load()
+    } catch (e) {
+      toast(`Upload failed: ${e instanceof Error ? e.message : String(e)}`, 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="page">
@@ -153,25 +183,37 @@ export function ArtifactPage({ artifactId }: { artifactId: string }) {
         </div>
       </div>
 
-      {/* branches */}
       <div className="panel repository-browser">
         <div className="panel-head">
-          <Icon name="code" size={13} /> Code
+          <Icon name="code" size={13} /> Repository files
           <span className="spacer" />
           <span className="faint small">{repoFiles.length} entries</span>
         </div>
         <div className="repo-branch-toolbar">
           <Badge variant="branch"><Icon name="branch" size={10} /> {branch}</Badge>
-          <span className="faint small">Browse the repository contents. History is available from the button above.</span>
+          <span className="faint small">Live entries from the repository API.</span>
         </div>
         <div className="repo-file-list">
           {repoFiles.map((file) => (
-            <button className={`repo-file-row ${selectedFile === file.path ? 'selected' : ''}`} key={file.path} onClick={() => file.type === 'file' && setSelectedFile(file.path)}>
+            <button className={`repo-file-row ${selectedFile === file.path ? 'selected' : ''}`} key={`${file.type}:${file.path}`} onClick={() => {
+                if (file.type !== 'file') return
+                if (file.artifact_id && file.artifact_id !== artifactId) navigate(`/art/${file.artifact_id}`)
+                else setSelectedFile(file.path)
+              }}>
               <Icon name={file.type === 'folder' ? 'chevron-right' : 'file'} size={14} />
-              <span className="repo-file-name">{file.path}{file.type === 'folder' && '/'}</span>
-              <span className="repo-file-note">{file.note}</span>
+              <span className="repo-file-name">{file.path}{file.type === 'folder' ? '/' : ''}</span>
+              <span className="repo-file-note">{file.type}</span>
             </button>
           ))}
+          {repoFiles.length === 0 && <div className="state-block">This repository has no entries yet.</div>}
+        </div>
+        <div className="panel-body btn-row" style={{ borderTop: '1px solid var(--border)' }}>
+          <input className="input" placeholder="new/folder/path" value={folderName} onChange={(e) => setFolderName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addFolder()} />
+          <button className="btn" onClick={addFolder} disabled={!folderName.trim()}>+ Folder</button>
+          <label className="btn primary" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+            {uploading ? 'Uploading…' : '+ Upload files'}
+            <input type="file" multiple hidden onChange={(e) => upload(e.target.files)} disabled={uploading} />
+          </label>
         </div>
       </div>
 
