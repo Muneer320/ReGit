@@ -92,8 +92,11 @@ export interface ResolveResponse {
 
 export interface IngestResponse {
   source_id: string
+  source_ids?: string[]
   artifact_ids: string[]
   warnings: string[]
+  errors?: { filename: string; code: string; message: string }[]
+  files?: { filename: string; source_id: string; artifact_ids: string[]; warnings: string[] }[]
 }
 
 /** SearchResult per docs/data-model.md — citations are mandatory. */

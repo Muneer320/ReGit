@@ -242,9 +242,10 @@ export const api = {
     }
   },
 
-  ingest: async (file: File, type: IngestType): Promise<IngestResponse> => {
+  ingest: async (files: File | File[], type: IngestType): Promise<IngestResponse> => {
+    const selected = Array.isArray(files) ? files : [files]
     const form = new FormData()
-    form.append('file', file)
+    for (const file of selected) form.append('files', file)
     form.append('type', type)
     let res: Response
     try {
@@ -269,7 +270,7 @@ export const api = {
       throw new ApiError(res.status, code, msg)
     }
     const out = (await res.json()) as IngestResponse
-    registerArtifacts(out.artifact_ids, file.name)
+    registerArtifacts(out.artifact_ids, selected.map((file) => file.name).join(', '))
     return out
   },
 

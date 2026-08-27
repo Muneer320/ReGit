@@ -22,18 +22,18 @@ export function IngestDialog({
 }) {
   const { toast } = useApp()
   const [type, setType] = useState<IngestType>('markdown')
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [over, setOver] = useState(false)
   const [phase, setPhase] = useState<'pick' | 'uploading'>('pick')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const submit = async () => {
-    if (!file) return
+    if (!files.length) return
     setPhase('uploading')
     try {
-      const res = await api.ingest(file, type)
+      const res = await api.ingest(files, type)
       toast(
-        `Ingested ${file.name} → ${res.artifact_ids.length} artifact${res.artifact_ids.length === 1 ? '' : 's'}${res.warnings?.length ? ` (${res.warnings.length} warnings)` : ''}`,
+        `Ingested ${files.length} file${files.length === 1 ? '' : 's'} → ${res.artifact_ids.length} artifact${res.artifact_ids.length === 1 ? '' : 's'}${res.errors?.length ? ` (${res.errors.length} failed)` : ''}${res.warnings?.length ? ` (${res.warnings.length} warnings)` : ''}`,
         'success',
       )
       onIngested()
@@ -68,7 +68,7 @@ export function IngestDialog({
           <div className="field">
             <label>File</label>
             <div
-              className={`file-drop ${file ? 'has-file' : ''} ${over ? 'over' : ''}`}
+              className={`file-drop ${files.length ? 'has-file' : ''} ${over ? 'over' : ''}`}
               onClick={() => inputRef.current?.click()}
               onDragOver={(e) => {
                 e.preventDefault()
@@ -78,14 +78,14 @@ export function IngestDialog({
               onDrop={(e) => {
                 e.preventDefault()
                 setOver(false)
-                const f = e.dataTransfer.files?.[0]
-                if (f) setFile(f)
+                const selected = Array.from(e.dataTransfer.files ?? [])
+                if (selected.length) setFiles(selected)
               }}
             >
-              {file ? (
+              {files.length ? (
                 <>
-                  <b>{file.name}</b>{' '}
-                  <span className="faint mono small">({Math.ceil(file.size / 1024)} KB)</span>
+                  <b>{files.map((file) => file.name).join(', ')}</b>{' '}
+                  <span className="faint mono small">({files.length} selected)</span>
                   <div className="small faint" style={{ marginTop: 4 }}>
                     click to choose a different file
                   </div>
@@ -103,7 +103,8 @@ export function IngestDialog({
               ref={inputRef}
               type="file"
               hidden
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              multiple
             />
           </div>
         </div>
@@ -111,7 +112,7 @@ export function IngestDialog({
           <button className="btn" onClick={onClose} disabled={phase === 'uploading'}>
             Cancel
           </button>
-          <button className="btn primary" onClick={submit} disabled={!file || phase === 'uploading'}>
+          <button className="btn primary" onClick={submit} disabled={!files.length || phase === 'uploading'}>
             {phase === 'uploading' ? (
               <>
                 <Spinner /> Ingesting…

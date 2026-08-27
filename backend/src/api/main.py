@@ -642,7 +642,8 @@ def resolve_merge(
 # ---------------------------------------------------------------------------
 @app.post("/api/ingest", status_code=201)
 async def ingest(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    files: list[UploadFile] | None = File(None),
     type: str = Form(...),                       # markdown|txt|chatgpt|claude|pdf|codebase
     user: str = Depends(get_user),
     store: ObjectStore = Depends(get_store),
@@ -650,16 +651,35 @@ async def ingest(
     kind = (type or "").lower()
     if kind not in VALID_TYPES:
         raise ApiError(400, "UNKNOWN_TYPE", f"unknown ingest type '{type}'")
-    data = await file.read()
-    outcome = pipeline.ingest(store, kind, file.filename or "upload", data, user)
-    pipeline.commit_roots(store, outcome, user)
-    for art in outcome.artifacts:
-        if art.commit_id:
-            _index_commit(store, art.commit_id, "main")
+    uploads = list(files or [])
+    if file is not None:
+        uploads.insert(0, file)
+    if not uploads:
+        raise ApiError(400, "NO_FILES", "at least one file is required")
+    outcomes = []
+    errors = []
+    for upload in uploads:
+        try:
+            outcome = pipeline.ingest(store, kind, upload.filename or "upload", await upload.read(), user)
+            pipeline.commit_roots(store, outcome, user)
+            for art in outcome.artifacts:
+                if art.commit_id:
+                    _index_commit(store, art.commit_id, "main")
+            outcomes.append({"filename": upload.filename or "upload", "source_id": outcome.source_id,
+                             "artifact_ids": outcome.artifact_ids, "warnings": outcome.warnings})
+        except ParseError as exc:
+            errors.append({"filename": upload.filename or "upload", "code": exc.code, "message": str(exc)})
+    if not outcomes:
+        raise ApiError(422, "PARSE_ERROR", "all uploaded files failed to parse: " + "; ".join(
+            f"{e['filename']}: {e['message']}" for e in errors
+        ))
     return {
-        "source_id": outcome.source_id,
-        "artifact_ids": outcome.artifact_ids,
-        "warnings": outcome.warnings,
+        "source_id": outcomes[0]["source_id"],
+        "source_ids": [o["source_id"] for o in outcomes],
+        "artifact_ids": [a for o in outcomes for a in o["artifact_ids"]],
+        "warnings": [w for o in outcomes for w in o["warnings"]],
+        "files": outcomes,
+        "errors": errors,
     }
 
 
