@@ -1,0 +1,4 @@
+ReGit plain-text fixture
+
+This file exercises the deterministic TXT ingestion parser.
+It contains two paragraphs and a source marker: [source: lab-notes].
