@@ -172,10 +172,11 @@ async def _on_binary(hub: CollabHub, room: LiveRoom, store: ObjectStore,
                     new = room.apply_update(update, client_id=user)
                     if new and store is not None:
                         persist_op(store, room.room, update, user)
-                    # relay the raw frame to the OTHER clients (spec: broadcast
-                    # binary update after persist+apply).
-                    await _broadcast_bytes(room, ws, frame)
-                return True
+                        # Relay only newly applied updates. Duplicate/out-of-order
+                        # replays are already represented in the room state and
+                        # must not create peer churn.
+                        await _broadcast_bytes(room, ws, frame)
+                    return True
             return False  # unknown sync subtype -> 4003
         if mtype == YMessageType.AWARENESS:
             payload = read_message(frame[1:])

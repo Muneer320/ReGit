@@ -126,7 +126,7 @@ def _store_unit(store, unit: ParsedUnit) -> str:
 def _add_edge(db, from_kind, from_id, to_kind, to_id, relation) -> str:
     pe_id = ids_mod.new_id("pe_")
     db.execute(
-        "INSERT INTO provenance_edges(id, from_kind, from_id, to_kind, to_id, relation, created_at) "
+        "INSERT OR IGNORE INTO provenance_edges(id, from_kind, from_id, to_kind, to_id, relation, created_at) "
         "VALUES (?,?,?,?,?,?,?)",
         (pe_id, from_kind, from_id, to_kind, to_id, relation, _now()),
     )

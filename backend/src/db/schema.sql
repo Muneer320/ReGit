@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS sources(id TEXT PRIMARY KEY, type TEXT, original_file
 CREATE TABLE IF NOT EXISTS claims(id TEXT PRIMARY KEY, text TEXT, artifact_id TEXT, commit_id TEXT, sid TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS provenance_edges(id TEXT PRIMARY KEY, from_kind TEXT, from_id TEXT, to_kind TEXT, to_id TEXT,
                               relation TEXT, created_at TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS provenance_edges_logical_unique
+  ON provenance_edges(from_kind, from_id, to_kind, to_id, relation);
 CREATE TABLE IF NOT EXISTS chunks(chunk_id TEXT PRIMARY KEY, artifact_id TEXT, branch TEXT, introduced_in_commit TEXT,
                     replaces TEXT, sid_range TEXT, kind TEXT, source_id TEXT, text TEXT);
 CREATE TABLE IF NOT EXISTS sentence_index(commit_id TEXT, artifact_id TEXT, sid TEXT, status TEXT, old_hash TEXT, new_hash TEXT,
