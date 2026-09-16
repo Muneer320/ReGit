@@ -20,6 +20,7 @@ export function LiveEditor({ artifactId, branch, onCommitted }: {artifactId: str
     textarea.current.value = ''
     const connection = new CollabClient(artifactId, branch, user, {
       onStatus: setStatus, onPeers: setPeers,
+      onReset: () => { setSaving(false); toast('Shared draft reset to the latest committed version.', 'info') },
       onCommitted: info => { setSaving(false); setLastCommit(info.commit_id); callback.current(); toast('Live draft committed.', 'success') },
       onError: (_code, error) => { setSaving(false); toast(error, 'error') },
     })
@@ -38,6 +39,7 @@ export function LiveEditor({ artifactId, branch, onCommitted }: {artifactId: str
     <p className="dim small">Open this artifact and branch in another browser session as userB. Draft updates sync live; Commit from live saves a version.</p>
     <textarea ref={textarea} aria-label="Live research draft" className="repo-editor mono" disabled={status !== 'connected'} spellCheck={false} />
     <div className="btn-row"><input className="input" aria-label="Live commit message" value={message} onChange={event => setMessage(event.target.value)} /><button className="btn primary" disabled={status !== 'connected' || saving || !message.trim()} onClick={() => { setSaving(true); client.current?.requestCommit(message.trim()) }}>Commit from live</button></div>
+    <p><button className="btn sm" disabled={status !== 'connected' || saving} onClick={() => { if (confirm('Replace the shared draft with the latest committed version? Uncommitted changes from all collaborators will be discarded.')) client.current?.resetDraft() }}>Reset draft to latest commit</button></p>
     {lastCommit && <p className="mono small" aria-live="polite">Saved commit {lastCommit.slice(0, 12)}</p>}
   </div>
 }

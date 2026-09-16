@@ -15,9 +15,9 @@ from backend.src.core.objects.store import ObjectStore
 def client(tmp_path):
     """A TestClient with an isolated, fresh ObjectStore on app.state (single
     uvicorn worker discipline — ADR-07)."""
-    client = TestClient(app)
-    client.app.state.store = ObjectStore(str(tmp_path / "store"))
-    yield client
+    app.state.store = ObjectStore(str(tmp_path / "store"))
+    with TestClient(app) as client:
+        yield client
 
 
 def hdr(user: str = "userA") -> dict:

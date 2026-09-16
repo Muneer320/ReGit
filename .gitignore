@@ -26,6 +26,7 @@ dist/
 # Env / secrets
 .env
 .env.local
+.demo-state.json
 *.pem
 
 # Test / cache / logs

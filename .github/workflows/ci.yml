@@ -38,3 +38,25 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: docker compose -p regit-ci up --build --wait --wait-timeout 180
+      - run: docker compose -p regit-ci exec -T regit /app/.venv/bin/python /app/scripts/smoke_demo.py --live --state-out /data/.smoke-state.json
+      - run: npm ci --prefix frontend --no-fund --no-audit
+      - run: node frontend/smoke.mjs
+      - run: |
+          docker compose -p regit-ci restart regit
+          docker compose -p regit-ci up --wait --wait-timeout 180
+          docker compose -p regit-ci exec -T regit /app/.venv/bin/python /app/scripts/smoke_demo.py --live --verify-state /data/.smoke-state.json
+      - if: failure()
+        run: docker compose -p regit-ci logs --tail 100
+      - if: always()
+        run: docker compose -p regit-ci down

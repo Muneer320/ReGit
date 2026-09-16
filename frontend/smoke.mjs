@@ -1,152 +1,89 @@
-// Headless smoke test of the full demo flow against dev server + live backend.
+// Real repository and two-browser collaboration check against the local demo.
+import assert from 'node:assert/strict'
+import { existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve, sep } from 'node:path'
 import puppeteer from 'puppeteer-core'
 
-const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-const BASE = 'http://localhost:5173'
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-
-async function text(page, sel) {
-  return page.$eval(sel, (el) => el.textContent).catch(() => null)
+const base = process.env.REGIT_BASE_URL || 'http://127.0.0.1:8377'
+assert(['127.0.0.1', 'localhost'].includes(new URL(base).hostname), 'Use a local demo endpoint.')
+const chrome = [process.env.CHROME_BIN, process.env.CHROME_PATH,
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(path => path && existsSync(path))
+assert(chrome, 'Install Chrome or set CHROME_BIN to its executable path.')
+const temporary = mkdtempSync(join(tmpdir(), 'regit-browser-'))
+const initial = '# Browser finding\n\nInitial café evidence.'
+writeFileSync(join(temporary, 'finding.md'), initial)
+const browser = await puppeteer.launch({executablePath: chrome, headless: true,
+  args: process.env.CI ? ['--no-sandbox'] : [], defaultViewport: {width: 1280, height: 950}})
+const errors = []
+const field = label => `[aria-label="${label}"]`
+async function click(page, label) {
+  const button = await page.waitForFunction(text => [...document.querySelectorAll('button')].find(button => button.textContent.trim() === text), {timeout: 10000}, label)
+  await button.asElement().click()
 }
-async function clickByText(page, selector, label) {
-  const handles = await page.$$(selector)
-  for (const h of handles) {
-    const t = await h.evaluate((el) => el.textContent.trim())
-    if (t.includes(label)) {
-      await h.click()
-      return true
-    }
-  }
-  return false
+async function value(page, label, expected) {
+  await page.waitForFunction((selector, expected) => document.querySelector(selector)?.value === expected, {timeout: 10000}, field(label), expected)
 }
-
-async function waitForAny(page, sels, timeoutMs = 9000) {
-  const start = Date.now()
-  while (Date.now() - start < timeoutMs) {
-    for (const s of sels) {
-      if (await page.$(s)) return s
-    }
-    await sleep(200)
-  }
-  return null
+async function pageIn(context, user) {
+  const page = await context.newPage()
+  page.on('pageerror', error => errors.push(error.message))
+  await page.evaluateOnNewDocument(user => localStorage.setItem('regit_user', user), user)
+  return page
 }
+try {
+  const contextA = await browser.createBrowserContext()
+  const a = await pageIn(contextA, 'userA')
+  await a.goto(base, {waitUntil: 'domcontentloaded'})
+  await a.locator(field('Repository name')).fill('Browser smoke ' + Date.now())
+  let response = a.waitForResponse(response => response.url().endsWith('/api/repositories') && response.request().method() === 'POST')
+  await click(a, 'Create repository')
+  let result = await response; assert.equal(result.status(), 201)
+  const rid = (await result.json()).id
+  await a.locator(field('New folder name')).fill('sources/nested')
+  response = a.waitForResponse(response => response.url().endsWith('/folders') && response.request().method() === 'POST')
+  await click(a, 'Create folder'); result = await response; assert.equal(result.status(), 201)
+  await click(a, 'sources/'); await click(a, 'nested/')
+  const upload = await a.$(field('Upload repository files'))
+  response = a.waitForResponse(response => response.url().endsWith('/files') && response.request().method() === 'POST')
+  await upload.uploadFile(join(temporary, 'finding.md'))
+  result = await response; assert.equal(result.status(), 201)
+  await click(a, 'finding.md'); await value(a, 'Repository file contents', initial)
+  await click(a, 'Live collaboration'); await value(a, 'Live research draft', initial)
 
-const run = async () => {
-  const browser = await puppeteer.launch({
-    executablePath: CHROME,
-    headless: 'new',
-    args: ['--no-sandbox', '--window-size=1500,950'],
-    defaultViewport: { width: 1500, height: 950 },
-  })
-  const page = await browser.newPage()
-  const errors = []
-  page.on('pageerror', (e) => errors.push(`PAGEERROR: ${e.message}`))
-  page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`CONSOLE: ${m.text()}`)
-  })
-
-  console.log('— open workspace')
-  await page.goto(BASE + '/#/', { waitUntil: 'networkidle0' })
-  await sleep(800)
-  console.log('  title:', await page.title())
-  const body = await text(page, '.main')
-  console.log('  has workspace heading:', body?.includes('Workspace'))
-
-  console.log('— load demo data')
-  const seeded = await clickByText(page, 'button', 'Load demo data')
-  console.log('  clicked:', seeded)
-  await sleep(2500)
-  const rows = await page.$$eval('.artifact-table tbody tr', (tr) => tr.map((r) => r.textContent)).catch(() => [])
-  console.log('  artifact rows:', rows.length)
-
-  if (rows.length === 0) throw new Error('no artifacts after seeding')
-
-  // Open the lr-stability artifact (merge scene)
-  console.log('— open lr-stability.md')
-  const lrRow = rows.find((r) => r.includes('lr-stability'))
-  console.log('  found row:', !!lrRow)
-  await page.evaluate((txt) => {
-    const trs = [...document.querySelectorAll('.artifact-table tbody tr')]
-    trs.find((t) => t.textContent.includes(txt)).click()
-  }, 'lr-stability')
-  await sleep(1200)
-  console.log('  overview h1:', await text(page, 'h1'))
-
-  console.log('— history')
-  await clickByText(page, '.nav-item', 'History')
-  await sleep(1000)
-  const commits = await page.$$eval('.commit-item', (cs) => cs.map((c) => c.querySelector('.commit-msg')?.textContent))
-  console.log('  commits:', commits.length, JSON.stringify(commits.slice(0, 3)))
-
-  console.log('— semantic diff')
-  await clickByText(page, '.nav-item', 'Diff')
-  await sleep(1800)
-  const stats = await text(page, '.diff-stats').catch(() => null)
-  console.log('  diff stats:', stats)
-  const changeRows = await page.$$eval('.change-row', (rs) => rs.map((r) => r.className.match(/row-(\w+)/)?.[1]))
-  console.log('  change rows:', JSON.stringify(changeRows))
-  await page.screenshot({ path: '/tmp/regit-diff.png' })
-
-  console.log('— merge scene')
-  await clickByText(page, '.nav-item', 'Merge')
-  await sleep(900)
-  const attempt = await clickByText(page, 'button', 'Attempt merge')
-  console.log('  attempted:', attempt)
-  const which = await waitForAny(page, ['.conflict-banner', '.merge-success', '.toast.error'])
-  console.log('  merge outcome:', which)
-  const banner = await text(page, '.conflict-banner').catch(() => null)
-  console.log('  conflict banner:', banner?.slice(0, 60))
-  const cards = await page.$$('.conflict-card')
-  console.log('  conflict cards:', cards.length)
-  if (!which) await page.screenshot({ path: '/tmp/regit-merge-stuck.png' })
-  await page.screenshot({ path: '/tmp/regit-conflict.png' })
-
-  if (cards.length > 0) {
-    console.log('— accept theirs on card 1')
-    await clickByText(page, '.conflict-card button', 'Accept Theirs')
-    await sleep(400)
-    console.log('— commit resolution')
-    const commitBtn = await clickByText(page, 'button', 'Commit merge')
-    console.log('  clicked commit:', commitBtn)
-    const ok = await waitForAny(page, ['.merge-success', '.toast.error'])
-    console.log('  resolution outcome:', ok)
-    const success = await text(page, '.merge-success').catch(() => null)
-    console.log('  success panel:', success ? success.replace(/\s+/g, ' ').slice(0, 140) : null)
-    await page.screenshot({ path: '/tmp/regit-success.png' })
-
-    if (success) {
-      console.log('— view history after merge (2 parents expected)')
-      await clickByText(page, '.merge-success button', 'View history')
-      await waitForAny(page, ['.commit-item'])
-      await sleep(800)
-      const commits2 = await page.$$eval('.commit-item', (cs) =>
-        cs.map((c) => ({ msg: c.querySelector('.commit-msg')?.textContent, merge: !!c.querySelector('.commit-dot.merge') })),
-      )
-      console.log('  top commits:', JSON.stringify(commits2.slice(0, 3), null, 1))
-    }
-  }
-
-  console.log('— search')
-  await page.goto(BASE + '/#/search', { waitUntil: 'networkidle0' })
-  await sleep(600)
-  await page.type('.search-input', 'gradient descent instability')
-  await page.keyboard.press('Enter')
-  await sleep(2000)
-  const results = await page.$$eval('.result-card', (rs) => rs.map((r) => ({
-    title: r.querySelector('b')?.textContent,
-    citation: r.querySelector('.citation-line')?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 130),
-  })))
-  console.log('  results:', results.length)
-  results.slice(0, 3).forEach((r) => console.log('   •', r.title, '|', r.citation))
-  await page.screenshot({ path: '/tmp/regit-search.png' })
-
-  console.log('\nERRORS:', errors.length === 0 ? 'none' : '')
-  errors.slice(0, 12).forEach((e) => console.log(' ', e.slice(0, 220)))
+  const contextB = await browser.createBrowserContext()
+  const b = await pageIn(contextB, 'userB')
+  await b.goto(base + '/#/repo/' + rid, {waitUntil: 'domcontentloaded'})
+  await click(b, 'sources/'); await click(b, 'nested/'); await click(b, 'finding.md')
+  await click(b, 'Live collaboration'); await value(b, 'Live research draft', initial)
+  const first = '# Browser finding\n\nEvidence edited by A.'
+  await a.locator(field('Live research draft')).fill(first)
+  await value(b, 'Live research draft', first)
+  const final = first + '\nclaim: Corroborated by B.'
+  await b.locator(field('Live research draft')).fill(final)
+  await value(a, 'Live research draft', final)
+  await a.waitForFunction(() => document.body.innerText.includes('Peers: userB'))
+  await click(a, 'Commit from live')
+  await a.waitForFunction(() => document.body.innerText.includes('Saved commit'))
+  await b.waitForFunction(() => document.body.innerText.includes('Saved commit'))
+  response = a.waitForResponse(response => response.url().endsWith('/file/publish') && response.request().method() === 'POST')
+  await click(a, 'Publish live file version'); result = await response; assert.equal(result.status(), 200)
+  await a.locator(field('Live research draft')).fill('Discard this uncommitted draft.')
+  await value(b, 'Live research draft', 'Discard this uncommitted draft.')
+  a.once('dialog', dialog => dialog.accept())
+  await click(a, 'Reset draft to latest commit')
+  await value(a, 'Live research draft', final); await value(b, 'Live research draft', final)
+  await click(a, 'File contents'); await value(a, 'Repository file contents', final)
+  await a.reload({waitUntil: 'domcontentloaded'})
+  await click(a, 'sources/'); await click(a, 'nested/'); await click(a, 'finding.md')
+  await value(a, 'Repository file contents', final)
+  await a.setViewport({width: 390, height: 844})
+  assert(await a.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'Mobile repository overflows.')
+  assert.deepEqual(errors, [])
+  console.log('Browser smoke passed: repository, nested upload, bidirectional live edits, presence, commit, publication, reload and mobile layout.')
+} finally {
   await browser.close()
+  assert(resolve(temporary).startsWith(resolve(tmpdir()) + sep))
+  rmSync(temporary, {recursive: true, force: true})
 }
-
-run().catch((e) => {
-  console.error('SMOKE FAIL:', e.message)
-  process.exit(1)
-})

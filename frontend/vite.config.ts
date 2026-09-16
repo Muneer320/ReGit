@@ -5,16 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 5175,
     proxy: {
       // REST + WebSocket -> FastAPI backend (single uvicorn worker, per adr-07)
       '/api': {
-        target: 'http://localhost:8377',
+        target: 'http://127.0.0.1:8377',
         changeOrigin: true,
         ws: true, // WS /api/collaborate/:artifact_id upgrades
       },
       '/ws': {
-        target: 'ws://localhost:8377',
+        target: 'ws://127.0.0.1:8377',
         ws: true,
       },
     },

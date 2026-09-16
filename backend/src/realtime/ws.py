@@ -31,6 +31,7 @@ from pycrdt import (
     YMessageType,
     YSyncMessageType,
     create_sync_message,
+    create_update_message,
     handle_sync_message,
     read_message,
 )
@@ -226,6 +227,21 @@ async def _on_text(hub: CollabHub, room: LiveRoom, store: ObjectStore,
             return
         await _broadcast_json_all(room, {"type": "committed", "commit_id": cid,
                                          "author": user, "message": message})
+    elif kind == "reset_request":
+        from ..core.collaboration.rooms import persist_room
+        async with hub.artifact_lock(room.artifact_id):
+            head = store.head(room.branch, room.artifact_id)
+            root = store.db.execute("SELECT root_hash FROM commits WHERE id=?", (head,)).fetchone()
+            if root is None:
+                await ws.send_text(json.dumps({"type": "error", "code": "BRANCH_NOT_FOUND", "message": "Branch no longer exists."}))
+                return
+            room.set_text(store.get_blob(root[0]).decode("utf-8"))
+            room.base_commit = head
+            persist_room(store, room)
+            update = create_update_message(room.doc.get_update())
+            await ws.send_bytes(update)
+            await _broadcast_bytes(room, ws, update)
+            await _broadcast_json_all(room, {"type": "reset", "commit_id": head})
     elif kind == "presence_ping":
         room.touch_awareness(user)
         await ws.send_text(json.dumps({"type": "presence",
@@ -242,6 +258,13 @@ async def collaborate(websocket: WebSocket, artifact_id: str,
                       branch: str = "main", user: str = "anonymous") -> None:
     """WS /collaborate/:artifact_id?branch=&user= (registered in api/main.py)."""
     store = _store_from_app(websocket.app)
+    artifact = store.db.execute(
+        "SELECT kind FROM artifacts WHERE id=? AND id NOT IN (SELECT artifact_id FROM tombstones)",
+        (artifact_id,),
+    ).fetchone()
+    if artifact is None or artifact[0] not in ("md", "txt") or store.head(branch, artifact_id) is None:
+        await websocket.close(code=1008, reason="Select an existing prose artifact and branch.")
+        return
     hub = _hub_from_app(websocket.app)
     try:
         await websocket.accept()

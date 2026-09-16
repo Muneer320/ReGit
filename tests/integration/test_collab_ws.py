@@ -2,6 +2,7 @@
 uvicorn server (avoids Starlette TestClient's single-socket concurrent-WebSocket
 limitation, which gave a false hang — the real uvicorn server relays fine)."""
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -33,11 +34,11 @@ def live_server():
     """Fresh temp store on the app + real uvicorn on a free port."""
     d = tempfile.mkdtemp()
     store = ObjectStore(d)
-    app.state.store = store
-    app.state.collab_hub = CollabHub(store)
+    store.db.execute("INSERT INTO artifacts(id,kind,title) VALUES ('art_ws','md','Shared seed')")
     blob = store.put_blob("md", b"shared seed")
     store.commit([], blob, "art_ws", "root", "muneer", kind="md",
                  author_date="2026-01-01T00:00:00+00:00")
+    store.db.close()
 
     port = _free_port()
     proc = subprocess.Popen(
@@ -45,6 +46,7 @@ def live_server():
          "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"],
         cwd=str(Path(__file__).resolve().parents[2]),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        env={**os.environ, "GR_API_DATA_DIR": d},
     )
     base = f"http://127.0.0.1:{port}"
     for _ in range(60):

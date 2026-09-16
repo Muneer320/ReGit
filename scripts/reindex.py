@@ -10,6 +10,7 @@ Usage: uv run python scripts/reindex.py [data_dir]
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -22,7 +23,7 @@ def main(argv: list[str]) -> int:
     data_dir = argv[1] if len(argv) > 1 else "data"
     store = ObjectStore(data_dir)
     try:
-        vector = get_vector_store(store, data_dir=data_dir)
+        vector = get_vector_store(store, data_dir=data_dir) if os.environ.get("GR_ENABLE_VECTORS") == "1" else None
     except Exception as exc:  # vectors optional — degrade, do not abort
         print(f"warning: vectors unavailable ({exc}); FTS5-only index")
         vector = None

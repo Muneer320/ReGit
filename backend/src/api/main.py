@@ -1,31 +1,16 @@
-"""FastAPI REST layer — one process serving REST + WS + static client.
+"""Local research workspace: repository snapshots, typed artifacts and live drafts.
 
-Wires every route in docs/specs/api-contract.md against the ObjectStore and the
-per-kind engines. Error shape everywhere: `{error: {code, message}}`. Mock users
-via the `X-User` header (userA|userB); mutating endpoints are idempotent through
-content addressing.
-
-Per adr-07: single uvicorn worker (the in-memory CRDT registry and the shared
-ObjectStore must not be duplicated). Run: uvicorn backend.src.api.main:app.
-
-Engine status today:
-  - versioning (ObjectStore.commit/history/branches/merge_base): IMPLEMENTED.
-  - diff (core/diff/align.diff_prose) for md/txt: IMPLEMENTED.
-  - parsing + ingest pipeline: IMPLEMENTED (this change).
-  - provenance reads: IMPLEMENTED.
-  - three-way merge (core/merge/three_way.merge_prose): STUB -> 501.
-  - retrieval/search (retrieval/service.search): IMPLEMENTED — hybrid
-    FTS5 BM25 + Chroma kNN, delta-reindexed on every commit; degraded to
-    keyword-only when the vector stack is unavailable (retrieval-spec.md).
-  - chat/pdf/codebase diff engines: STUB -> 501. Collaboration/WS
-    (realtime/ws.py): IMPLEMENTED — live CRDT editing + commit-from-live.
-Those stubs raise NotImplementedError which is mapped to 501; we do NOT fake
-responses — the route + contract shape are fixed and the engine slots in later.
+One uvicorn worker serves HTTP, Yjs-compatible collaboration and the built
+frontend. Prose supports semantic diff/merge; chat supports message diff.
+Keyword retrieval is the default; vectors are an explicit optional extra.
+User headers select demo identities and do not establish authentication.
 """
 from __future__ import annotations
 
 import logging
 import os
+import threading
+from contextlib import asynccontextmanager
 from datetime import UTC
 from pathlib import Path
 
@@ -70,7 +55,26 @@ _FRONTEND = (_BASE / "frontend" / "dist") if (_BASE / "frontend" / "dist" / "ind
 _ARTIFACT_KINDS = {"md", "txt", "chat", "pdf", "codebase"}
 _BLOB_TAG = {"md": "md", "txt": "txt", "chat": "chat", "pdf": "pdf", "codebase": "tree"}
 
-app = FastAPI(title="ReGit", version="0.1.0")
+_STORE_CREATION_LOCK = threading.Lock()
+
+
+@asynccontextmanager
+async def lifespan(application):
+    store = getattr(application.state, "store", None)
+    if store is None:
+        store = ObjectStore(os.environ.get("GR_API_DATA_DIR", "data"))
+        application.state.store = store
+    try:
+        yield
+    finally:
+        store.db.close()
+        if getattr(application.state, "store", None) is store:
+            del application.state.store
+        if hasattr(application.state, "collab_hub"):
+            del application.state.collab_hub
+
+
+app = FastAPI(title="ReGit", version="0.1.0", lifespan=lifespan)
 
 
 # ---------------------------------------------------------------------------
@@ -133,11 +137,12 @@ def _on_http(_req: Request, exc: HTTPException) -> JSONResponse:
 # Dependencies
 # ---------------------------------------------------------------------------
 def get_store(request: Request) -> ObjectStore:
-    store = getattr(request.app.state, "store", None)
-    if store is None:
-        store = ObjectStore(os.environ.get("GR_API_DATA_DIR", "data"))
-        request.app.state.store = store
-    return store
+    with _STORE_CREATION_LOCK:
+        store = getattr(request.app.state, "store", None)
+        if store is None:
+            store = ObjectStore(os.environ.get("GR_API_DATA_DIR", "data"))
+            request.app.state.store = store
+        return store
 
 
 def get_user(x_user: str | None = Header(default=None, alias="X-User")) -> str:
@@ -611,7 +616,7 @@ def diff(
 
 
 # ---------------------------------------------------------------------------
-# Merge  (three_way.merge_prose is a stub -> 501 until H5 lands)
+# Prose merge with guarded target refs and persisted conflict resolutions
 # ---------------------------------------------------------------------------
 @app.post("/api/merge", status_code=201)
 def merge(
@@ -813,7 +818,7 @@ async def ingest(
 
 
 # ---------------------------------------------------------------------------
-# Retrieval / search  (engine stub -> 501)
+# Current and historical retrieval
 # ---------------------------------------------------------------------------
 @app.post("/api/search")
 def search(
@@ -826,7 +831,7 @@ def search(
     return retrieval.search(
         store, body.query, max(1, min(body.k, 100)), body.branch,
         body.as_of_commit, body.artifact_kind,
-    )  # NotImplementedError -> 501 until the retrieval engine lands
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -86,3 +86,26 @@ def test_empty_sync_reply_is_a_valid_handshake_frame(tmp_path, subtype):
         assert await _on_binary(hub, room, store, AsyncMock(), bytes([0, subtype, 2, 0, 0]), 'userA')
         assert room.text() == 'Initial research.'
     asyncio.run(scenario())
+
+
+def test_explicit_reset_preserves_crdt_identity_and_does_not_create_a_commit(tmp_path):
+    import json
+    from unittest.mock import AsyncMock
+    import pycrdt
+    from backend.src.realtime.ws import _on_text
+
+    store, root = setup_store(tmp_path)
+
+    async def scenario():
+        hub = CollabHub(store)
+        room = await hub.get_room('notes', 'main')
+        room.set_text('Pending discarded draft.')
+        peer = LiveRoom('notes', 'main', state=room.doc.get_update())
+        socket = AsyncMock()
+        room.clients['userA'] = socket
+        await _on_text(hub, room, store, socket, json.dumps({'type': 'reset_request'}), 'userA')
+        update = socket.send_bytes.call_args.args[0]
+        pycrdt.handle_sync_message(update[1:], peer.doc)
+        assert peer.text() == 'Initial research.'
+        assert room.base_commit == root and store.head('main', 'notes') == root
+    asyncio.run(scenario())

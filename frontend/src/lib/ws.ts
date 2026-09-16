@@ -26,6 +26,7 @@ export interface CollabEvents {
   onStatus?: (s: CollabStatus) => void
   onPeers?: (peers: Record<string, PeerPresence>) => void
   onCommitted?: (info: { commit_id: string; author?: string; message?: string }) => void
+  onReset?: () => void
   onError?: (code: string, message: string) => void
 }
 
@@ -129,6 +130,10 @@ export class CollabClient {
     this.ws.send(JSON.stringify({ type: 'commit_request', message }))
   }
 
+  resetDraft() {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({type: 'reset_request'}))
+  }
+
   localText(): string {
     return this.ytext.toString()
   }
@@ -164,6 +169,9 @@ export class CollabClient {
         switch (msg.type) {
           case 'committed':
             this.events.onCommitted?.(msg)
+            break
+          case 'reset':
+            this.events.onReset?.()
             break
           case 'error':
             this.events.onError?.(String(msg.code ?? 'ERROR'), String(msg.message ?? ''))

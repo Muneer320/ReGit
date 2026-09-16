@@ -87,6 +87,7 @@ function ArtifactNav({ id }: { id: string }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { connection } = useApp()
   const route = useRoute()
   const [title, setTitle] = useState<string | null>(null)
   const artId = route.segments[0] === 'art' ? route.segments[1] : undefined
@@ -150,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="main">{children}</main>
+      <main className="main">{connection === 'offline' && <div className="notice">This preview needs the local demo server. <a href="https://github.com/Muneer320/ReGit#run-the-local-demo" target="_blank" rel="noopener noreferrer">Open the setup guide</a> to use your own workspace.</div>}{children}</main>
     </div>
   )
 }
