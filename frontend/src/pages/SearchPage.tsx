@@ -9,7 +9,6 @@ import {
   Hash,
   KindBadge,
   LoadingState,
-  MockChip,
   Spinner,
   timeAgo,
 } from '../components/ui'
@@ -65,7 +64,6 @@ export function SearchPage() {
     [],
   )
 
-  const anyMock = results?.some((r) => r.viaMock) ?? false
 
   return (
     <div className="page">
@@ -161,7 +159,6 @@ export function SearchPage() {
               {results.length} result{results.length === 1 ? '' : 's'}
             </h2>
             <span className="faint small">for “{lastQuery}”, ranked by relevance</span>
-            {anyMock && <MockChip />}
           </div>
 
           {results.map((r) => (

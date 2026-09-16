@@ -110,3 +110,24 @@ def test_activity_uses_real_commits_and_keeps_repositories_out_of_artifact_listi
     assert client.get('/api/artifacts').json() == []
     client.delete('/api/repositories/' + created['id'])
     assert client.get('/api/activity').json() == []
+
+
+def test_live_file_publication_is_explicit_versioned_and_branch_local(client):
+    start = upload(client, repository(client), [('notes.md', b'Original finding.')]).json()
+    rid = start['id']
+    branch = client.post(f'/api/repositories/{rid}/branches', json={'name': 'experiment', 'from_commit': start['commit_id']}).json()
+    prepared = client.post(f'/api/repositories/{rid}/file/live', json=change(branch, 'notes.md')).json()
+    assert prepared['branch'].endswith('/experiment')
+    saved = client.post('/api/artifacts/' + prepared['artifact_id'] + '/commit', json={
+        'branch': prepared['branch'], 'base_commit': prepared['commit_id'],
+        'content': 'A saved live finding.', 'message': 'Save live draft',
+    })
+    assert saved.status_code == 201, saved.text
+    assert client.get(f'/api/repositories/{rid}/file', params={'path': 'notes.md', 'branch': 'experiment'}).content == b'Original finding.'
+    published = client.post(f'/api/repositories/{rid}/file/publish', json=change(branch, 'notes.md'))
+    assert published.status_code == 200, published.text
+    assert client.get(f'/api/repositories/{rid}/file', params={'path': 'notes.md', 'branch': 'experiment'}).content == b'A saved live finding.'
+    assert client.get(f'/api/repositories/{rid}/file', params={'path': 'notes.md', 'branch': 'main'}).content == b'Original finding.'
+    assert client.get(f'/api/repositories/{rid}/file', params={'path': 'notes.md', 'commit': start['commit_id']}).content == b'Original finding.'
+    duplicate = client.post(f'/api/repositories/{rid}/file/publish', json=change(published.json(), 'notes.md'))
+    assert duplicate.status_code == 409 and duplicate.json()['error']['code'] == 'NO_NEW_COMMIT'

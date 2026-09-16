@@ -10,7 +10,6 @@ import {
   ErrorState,
   Hash,
   LoadingState,
-  MockChip,
   Spinner,
   inlineHighlight,
   shortHash,
@@ -264,8 +263,7 @@ export function DiffPage({ artifactId }: { artifactId: string }) {
         {!loading && !error && diff && (
           <>
             <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
-              {diff.viaMock !== true && <Badge variant="green">engine output</Badge>}
-              {diff.viaMock === true && <MockChip />}
+              <Badge variant="green">engine output</Badge>
               <span className="faint small mono">kind={diff.kind}</span>
               <span className="faint small">
                 {stats!.added + stats!.deleted + stats!.edited} semantic changes across{' '}

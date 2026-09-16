@@ -35,6 +35,8 @@ export const repositories = {
   },
   bytes: (snapshot: Snapshot, path: string) => apiFetch('GET', `${route(snapshot.id)}/file?${new URLSearchParams({path, branch: snapshot.branch, commit: snapshot.commit_id})}`),
   edit: (snapshot: Snapshot, path: string, content: string, message: string) => request<Snapshot>('PATCH', `${route(snapshot.id)}/file`, {path, content, message, branch: snapshot.branch, base_commit: snapshot.commit_id}),
+  live: (snapshot: Snapshot, path: string) => request<FileReference>('POST', `${route(snapshot.id)}/file/live`, {path, branch: snapshot.branch, base_commit: snapshot.commit_id}),
+  publish: (snapshot: Snapshot, path: string, message: string) => request<Snapshot>('POST', `${route(snapshot.id)}/file/publish`, {path, message, branch: snapshot.branch, base_commit: snapshot.commit_id}),
   remove: (snapshot: Snapshot, path: string, message: string) => request<Snapshot>('DELETE', `${route(snapshot.id)}/entry`, {path, message, branch: snapshot.branch, base_commit: snapshot.commit_id}),
   delete: (id: string) => request<void>('DELETE', route(id)),
   activity: () => request<Activity[]>('GET', '/activity'),

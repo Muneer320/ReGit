@@ -28,6 +28,12 @@ class Branch(BaseModel):
     from_commit: str
 
 
+class LiveRequest(BaseModel):
+    path: str
+    branch: str = 'main'
+    base_commit: str | None = None
+
+
 def router(get_store, get_user):
     routes = APIRouter(prefix='/api/repositories')
 
@@ -90,6 +96,14 @@ def router(get_store, get_user):
     @routes.delete('/{rid}/entry')
     def delete(rid: str, body: Change, store=Depends(get_store), user=Depends(get_user)):
         return Repositories(store).delete_entry(rid, body.path, body.branch, body.base_commit, body.message, user)
+
+    @routes.post('/{rid}/file/live')
+    def prepare_live(rid: str, body: LiveRequest, store=Depends(get_store), user=Depends(get_user)):
+        return Repositories(store).prepare_live(rid, body.path, body.branch, body.base_commit)
+
+    @routes.post('/{rid}/file/publish')
+    def publish_live(rid: str, body: Change, store=Depends(get_store), user=Depends(get_user)):
+        return Repositories(store).publish_live(rid, body.path, body.branch, body.base_commit, body.message, user)
 
     @routes.delete('/{rid}', status_code=204)
     def delete_repository(rid: str, store=Depends(get_store), user=Depends(get_user)):

@@ -132,3 +132,16 @@ def test_chat_diff_reports_message_changes(client):
     changes = response.json()['changes']
     assert any(item.get('old_text') == 'Original answer.' for item in changes)
     assert any(item.get('new_text') == 'Revised answer.' for item in changes)
+
+
+def test_historical_search_restores_overwritten_text_and_hides_deleted_artifacts(client):
+    artifact, root = create(client, 'The original zephyr finding.')
+    updated = commit(client, artifact, 'main', 'A replacement cobalt conclusion.')
+    assert client.post('/api/search', json={'query': 'zephyr'}).json()['results'] == []
+    old = client.post('/api/search', json={'query': 'zephyr', 'as_of_commit': root}).json()['results']
+    assert len(old) == 1 and old[0]['text'] == 'The original zephyr finding.'
+    assert old[0]['introduced_in_commit'] == root
+    assert client.post('/api/search', json={'query': 'zephyr', 'as_of_commit': updated}).json()['results'] == []
+    assert client.post('/api/search', json={'query': 'cobalt'}).json()['results']
+    client.delete(f'/api/artifacts/{artifact}')
+    assert client.post('/api/search', json={'query': 'cobalt'}).json()['results'] == []

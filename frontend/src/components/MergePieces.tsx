@@ -32,11 +32,6 @@ export function MergeSuccess({
           <span className="small dim">
             “merge {theirs} into {ours}”
           </span>
-          {resolve?.viaMock && (
-            <span className="small faint">
-              resolution committed via demo adapter (2-parent persistence pending on backend)
-            </span>
-          )}
         </div>
       ) : (
         <p className="dim small" style={{ marginTop: 8 }}>

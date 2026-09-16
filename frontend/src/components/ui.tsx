@@ -121,17 +121,6 @@ export function ErrorState({ message, retry }: { message: string; retry?: () => 
   )
 }
 
-export function MockChip() {
-  return (
-    <span
-      className="badge amber"
-      title="Backend engine for this surface is still a stub — rendered by the local demo adapter over real repository data."
-    >
-      demo adapter
-    </span>
-  )
-}
-
 export function Toasts() {
   const { toasts, dismissToast } = useApp()
   return (

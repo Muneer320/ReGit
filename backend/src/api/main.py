@@ -824,7 +824,7 @@ def search(
     if not body.query.strip():
         raise ApiError(400, "EMPTY_QUERY", "query must be non-empty")
     return retrieval.search(
-        store, body.query, max(1, body.k), body.branch,
+        store, body.query, max(1, min(body.k, 100)), body.branch,
         body.as_of_commit, body.artifact_kind,
     )  # NotImplementedError -> 501 until the retrieval engine lands
 

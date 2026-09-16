@@ -6,7 +6,7 @@ import { navigate, useRoute } from '../lib/router'
 import { ConflictCard } from '../components/ConflictCard'
 import type { PendingResolution } from '../components/ConflictCard'
 import { ConflictBanner, MergeSuccess, OursTheirsHeader } from '../components/MergePieces'
-import { Badge, ErrorState, LoadingState, MockChip, Spinner } from '../components/ui'
+import { Badge, ErrorState, LoadingState, Spinner } from '../components/ui'
 import { Icon } from '../components/Icon'
 
 type Phase = 'setup' | 'merging' | 'conflicts' | 'resolving' | 'done'
@@ -126,7 +126,6 @@ export function MergePage({ artifactId }: { artifactId: string }) {
             Sentence-level three-way merge. Incompatible edits surface as conflicts — the engine never guesses.
           </p>
         </div>
-        {merge?.viaMock && <MockChip />}
       </div>
 
       {/* ---- setup ---- */}
@@ -221,12 +220,6 @@ export function MergePage({ artifactId }: { artifactId: string }) {
               <span className="ot-branch" style={{ fontSize: 12.5 }}>{theirs}</span>
             </div>
           </div>
-
-          {merge.viaMock && (
-            <p className="small faint" style={{ margin: '0 2px 10px' }}>
-              Backend conflict persistence is still a stub — this scene is computed by the local demo adapter over the real DAG and commits through the live API.
-            </p>
-          )}
 
           {merge.conflicts.map((c) => (
             <ConflictCard

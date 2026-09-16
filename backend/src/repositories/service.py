@@ -250,3 +250,43 @@ class Repositories:
         with self.store._lock:
             self._repository(rid)
             return self.store.history(rid, branch)
+
+    def prepare_live(self, rid, path, branch, expected):
+        path = normalize_path(path)
+        with self.store._tx():
+            _, tree = self._current(rid, branch, expected)
+            entry = tree['files'].get(path)
+            if not entry or not entry['editable'] or len(entry['artifacts']) != 1:
+                raise RepositoryError(400, 'NOT_EDITABLE', 'Live editing requires a text file.')
+            reference = dict(entry['artifacts'][0])
+            child_branch = f'repository/{rid}/{branch}'
+            if self.store.head(child_branch, reference['artifact_id']) is None:
+                self.store.create_branch(child_branch, reference['artifact_id'], reference['commit_id'])
+            reference['branch'] = child_branch
+            return reference
+
+    def publish_live(self, rid, path, branch, expected, message, user):
+        from ..provenance.service import ancestors
+
+        path = normalize_path(path)
+        with self.store._tx():
+            parent, tree = self._current(rid, branch, expected)
+            entry = tree['files'].get(path)
+            if not entry or not entry['editable'] or len(entry['artifacts']) != 1:
+                raise RepositoryError(400, 'NOT_EDITABLE', 'Select a text file with a live commit.')
+            reference = entry['artifacts'][0]
+            child_branch = f'repository/{rid}/{branch}'
+            latest = self.store.head(child_branch, reference['artifact_id'])
+            if latest is None or latest == reference['commit_id']:
+                raise RepositoryError(409, 'NO_NEW_COMMIT', 'Commit the live draft before publishing its file version.')
+            if reference['commit_id'] not in ancestors(self.store, latest):
+                raise RefConflictError('The live branch diverged from this file version; reconcile it before publishing.')
+            root = self.store.db.execute('SELECT root_hash FROM commits WHERE id=? AND artifact_id=?',
+                                         (latest, reference['artifact_id'])).fetchone()
+            data = self.store.get_blob(root[0])
+            if len(data) > MAX_FILE_BYTES:
+                raise RepositoryError(413, 'FILE_LIMIT', 'Live file exceeds 16 MiB.')
+            reference.update(commit_id=latest, branch=child_branch)
+            entry.update(raw_hash=self.store.put_blob('raw', data), size=len(data))
+            self._save(rid, branch, tree, parent, message, user)
+        return self.snapshot(rid, branch)

@@ -208,8 +208,12 @@ def test_search_fts_query_sanitizes_special_chars(tmp_path):
 def test_as_of_commit_ancestry_excludes_later_chunks(tmp_path):
     store, c0, c1, c2 = build_chain(tmp_path)
     svc = SearchService(store, None)
-    # Adam sentence was edited at c1 -> not known at c0
-    assert svc.search("Adam mitigates", as_of_commit=c0)["results"] == []
+    # The original sentence remains searchable at c0 after the current FTS
+    # row has been replaced. Its later qualifier was not known at c0.
+    old = svc.search("Adam mitigates", as_of_commit=c0)["results"]
+    assert len(old) == 1 and old[0]["text"].endswith("Adam mitigates loss spikes.")
+    assert svc.search("high", as_of_commit=c0)["results"] == []
+    assert svc.search("high", as_of_commit=c1)["results"]
     assert len(svc.search("Adam mitigates", as_of_commit=c1)["results"]) == 1
     assert len(svc.search("Adam mitigates", as_of_commit=c2)["results"]) == 1
     # SGD sentence was added at c2 -> only known from c2 on

@@ -6,6 +6,10 @@ artifact_kind) -> rerank (0.6*vector + 0.3*bm25_norm + 0.1*source_diversity)
 -> cited SearchResult[] (data-model.md). NOT a RAG chatbot: no LLM, no answer
 synthesis — every hit carries its citation metadata.
 
+Historical queries reconstruct the selected immutable revision and use an
+ephemeral keyword index, so superseded text remains searchable. That path
+does not require vectors and reports keyword-only mode explicitly.
+
 Degraded mode (spec fallback): when the vector stack is unavailable or fails,
 the service runs the deterministic FTS5 + provenance pipeline and returns
 degraded=True ("degraded: FTS5 only" banner). Determinism is contractual for
@@ -182,7 +186,10 @@ class SearchService:
                             replaced_before.add(old_cid)
 
         visible: set[str] = set()
+        deleted = {row[0] for row in store.db.execute('SELECT artifact_id FROM tombstones')}
         for chunk_id, art_id, br, introduced, _replaces in rows:
+            if art_id in deleted:
+                continue
             if branch is not None and br != branch:
                 continue
             if kind is not None and kinds.get(art_id) != kind:
@@ -246,6 +253,52 @@ class SearchService:
 
     # -- main ----------------------------------------------------------------
 
+    def _historical(self, query, commit_id, branch, kind, k):
+        """Search an immutable revision, including chunks overwritten in FTS."""
+        import sqlite3
+        from .chunkers import chunk_document
+        from .indexer import _load_payload
+
+        row = self.store.db.execute(
+            "SELECT c.artifact_id,c.root_hash,a.kind,a.title,a.source_id FROM commits c "
+            "JOIN artifacts a ON a.id=c.artifact_id WHERE c.id=? "
+            "AND a.id NOT IN (SELECT artifact_id FROM tombstones)", (commit_id,),
+        ).fetchone()
+        if row is None or (kind and row[2] != kind):
+            return {'results': [], 'degraded': True}
+        aid, root, actual_kind, title, source_id = row
+        selected_branch = branch or 'main'
+        if branch and commit_id not in commit_ancestors(self.store, self.store.head(branch, aid) or ''):
+            return {'results': [], 'degraded': True}
+        chunks = chunk_document(actual_kind, _load_payload(self.store, actual_kind, root), aid, selected_branch)
+        by_id = {chunk.chunk_id: chunk for chunk in chunks}
+        introduced = dict.fromkeys(by_id, commit_id)
+        remaining, cursor = set(by_id), commit_id
+        while remaining:
+            parent = self.store.db.execute('SELECT parent_id FROM commit_parents WHERE commit_id=? ORDER BY parent_id LIMIT 1', (cursor,)).fetchone()
+            if not parent:
+                break
+            parent_root = self.store.db.execute('SELECT root_hash FROM commits WHERE id=?', parent).fetchone()
+            previous = {chunk.chunk_id: chunk.text for chunk in chunk_document(actual_kind, _load_payload(self.store, actual_kind, parent_root[0]), aid, selected_branch)}
+            remaining = {cid for cid in remaining if previous.get(cid) == by_id[cid].text}
+            introduced.update(dict.fromkeys(remaining, parent[0]))
+            cursor = parent[0]
+        match = fts_query(query)
+        if not match or not chunks:
+            return {'results': [], 'degraded': True}
+        source = self.store.db.execute('SELECT type,original_filename FROM sources WHERE id=?', (source_id,)).fetchone()
+        with sqlite3.connect(':memory:') as index:
+            index.execute('CREATE VIRTUAL TABLE snapshot_fts USING fts5(chunk_id UNINDEXED,text)')
+            index.executemany('INSERT INTO snapshot_fts VALUES (?,?)', [(chunk.chunk_id, chunk.text) for chunk in chunks])
+            matches = index.execute('SELECT chunk_id FROM snapshot_fts WHERE snapshot_fts MATCH ? ORDER BY bm25(snapshot_fts),chunk_id LIMIT ?', (match, max(1, k))).fetchall()
+        return {'results': [{
+            'chunk_id': cid, 'text': by_id[cid].text, 'artifact_id': aid, 'artifact_title': title,
+            'branch': selected_branch, 'kind': actual_kind, 'introduced_in_commit': introduced[cid],
+            'as_of_commit': commit_id, 'sid_range': by_id[cid].sid_range,
+            'source': {'type': source[0], 'filename': source[1]} if source else None,
+            'score': round(1 / (rank + 1), 6),
+        } for rank, (cid,) in enumerate(matches)], 'degraded': True}
+
     def search(self, query: str, k: int = 5, branch: str | None = None,
                as_of_commit: str | None = None, artifact_kind: str | None = None) -> dict:
         store = self.store
@@ -253,6 +306,8 @@ class SearchService:
             "SELECT 1 FROM commits WHERE id=?", (as_of_commit,)
         ).fetchone() is None:
             raise ValueError(f"unknown as_of_commit {as_of_commit}")
+        if as_of_commit is not None:
+            return self._historical(query, as_of_commit, branch, artifact_kind, k)
         degraded = False
 
         scores_bm25 = self._keyword_leg(query)

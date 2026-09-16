@@ -59,8 +59,6 @@ export interface Change {
 export interface DiffResponse {
   kind: string
   changes: Change[]
-  /** true when produced by the local demo fallback */
-  viaMock?: boolean
 }
 
 export interface Conflict {
@@ -89,12 +87,10 @@ export interface MergeResponse {
   theirs_branch?: string
   artifact_id?: string
   /** true when produced by the local demo fallback, not the backend engine */
-  viaMock?: boolean
 }
 
 export interface ResolveResponse {
   result_commit_id: string
-  viaMock?: boolean
 }
 
 export interface IngestResponse {
@@ -118,5 +114,4 @@ export interface SearchResult {
   sid_range: string
   kind: string
   source: { type: string; filename: string } | null
-  viaMock?: boolean
 }
