@@ -130,7 +130,7 @@ Two branches, same sentence, two different edits → **one conflict card** → r
 **4 of 4 pillars done + stretch. Backend + frontend integrated, live-verified, fully tested.**
 
 ✅ done · ❌ out of scope (per brief): real auth, OCR, custom vector DB.
-Beyond-scope next: cross-artifact claim propagation, agent editing branches (details in [EXPLAINER.md](docs/EXPLAINER.md)).
+Beyond-scope next: cross-artifact claim propagation, agent editing branches (detail in [EXPLAINER.md](docs/EXPLAINER.md)).
 
 ---
 
