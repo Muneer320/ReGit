@@ -296,7 +296,7 @@ def list_artifacts(store: ObjectStore = Depends(get_store)) -> list[dict]:
     frontend fell back to a localStorage registry that loses state on reload)."""
     out = []
     for _id, kind, title, source_id, _created in store.db.execute(
-        "SELECT id, kind, title, source_id, created_at FROM artifacts WHERE id NOT IN (SELECT artifact_id FROM tombstones) ORDER BY created_at DESC"
+        "SELECT id, kind, title, source_id, created_at FROM artifacts WHERE kind!='repository' AND id NOT IN (SELECT artifact_id FROM tombstones) ORDER BY created_at DESC"
     ):
         branches = [
             {"name": b, "head": h}
@@ -307,7 +307,7 @@ def list_artifacts(store: ObjectStore = Depends(get_store)) -> list[dict]:
         ]
         out.append({
             "id": _id, "kind": kind, "title": title,
-            "branches": branches, "source_id": source_id,
+            "branches": branches, "source_id": source_id, "created_at": _created,
         })
     return out
 
@@ -325,7 +325,7 @@ def get_artifact(artifact_id: str, store: ObjectStore = Depends(get_store)) -> d
             (artifact_id,),
         )
     ]
-    return {"id": _id, "kind": kind, "title": title, "branches": branches, "source_id": source_id}
+    return {"id": _id, "kind": kind, "title": title, "branches": branches, "source_id": source_id, "created_at": _created}
 
 
 def _repo_path(path: str) -> str:
@@ -884,6 +884,15 @@ async def collaborate_ws_api_alias(
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/api/activity")
+def activity(limit: int = Query(default=50, ge=1, le=100), store: ObjectStore = Depends(get_store)):
+    return [dict(zip(('commit_id', 'artifact_id', 'title', 'kind', 'message', 'author', 'author_date'), row, strict=True))
+            for row in store.db.execute(
+                "SELECT c.id,c.artifact_id,a.title,a.kind,c.message,c.author,c.author_date "
+                "FROM commits c JOIN artifacts a ON a.id=c.artifact_id "
+                "WHERE a.id NOT IN (SELECT artifact_id FROM tombstones) ORDER BY c.rowid DESC LIMIT ?", (limit,))]
 
 
 app.include_router(repository_router(get_store, get_user))

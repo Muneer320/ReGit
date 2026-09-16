@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, registryLoad } from '../lib/api'
-import type { ArtifactRecord, SearchResult } from '../lib/types'
+import { api } from '../lib/api'
+import type { Artifact, SearchResult } from '../lib/types'
 import { navigate, useRoute } from '../lib/router'
 import {
   Badge,
@@ -36,8 +36,8 @@ export function SearchPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Suggested queries derived from what's actually in the corpus.
-  const [artifacts, setArtifacts] = useState<ArtifactRecord[]>([])
-  useEffect(() => setArtifacts(registryLoad()), [])
+  const [artifacts, setArtifacts] = useState<Artifact[]>([])
+  useEffect(() => { api.listArtifacts().then(setArtifacts).catch(() => setArtifacts([])) }, [])
 
   useEffect(() => {
     if (initialQ) run(initialQ)

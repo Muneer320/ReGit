@@ -50,6 +50,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 #root { height: 100%; }
+
+/* Controls for the versioned repository workflow. */
+.link { border: 0; background: none; color: var(--accent); padding: 0; text-align: left; cursor: pointer; font: inherit; }
+.link:hover { text-decoration: underline; }
+.notice { padding: 12px 16px; border: 1px solid var(--border); background: var(--accent-soft); border-radius: 8px; margin-bottom: 16px; color: var(--fg-dim); }
+.repo-controls, .repo-form { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 16px; }
+.repo-controls { margin-bottom: 16px; }
+.repo-controls label, .repo-form label { display: grid; gap: 6px; color: var(--fg-dim); min-width: 0; max-width: 100%; }
+.repo-controls input, .repo-controls select, .repo-form input { background: var(--bg0); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; max-width: 100%; }
+.repo-layout { display: grid; grid-template-columns: minmax(280px, 2fr) minmax(0, 3fr); gap: 18px; align-items: start; margin-bottom: 18px; }
+.repo-layout > section { min-width: 0; }
+.repo-path { overflow-wrap: anywhere; }
+.repo-preview, .repo-summary { padding: 16px; }
+.repo-editor { min-height: 300px; width: 100%; resize: vertical; background: var(--bg0); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+@media (max-width: 900px) { .repo-layout { grid-template-columns: 1fr; } .repo-controls > label, .repo-controls form { width: 100%; } }
 h1, h2, h3 { margin: 0; font-weight: 600; color: var(--heading); letter-spacing: -0.01em; }
 h1 { font-size: 16px; }
 h2 { font-size: 13px; }

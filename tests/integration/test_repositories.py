@@ -98,3 +98,15 @@ def test_snapshot_ownership_collisions_and_repository_deletion(client):
     assert client.delete(f'/api/repositories/{rid}').status_code == 204
     assert rid not in {item['id'] for item in client.get('/api/repositories').json()}
     assert client.get(f'/api/repositories/{rid}').status_code == 404
+
+
+def test_activity_uses_real_commits_and_keeps_repositories_out_of_artifact_listing(client):
+    assert client.get('/api/activity').json() == []
+    created = repository(client, 'Actual activity')
+    activity = client.get('/api/activity').json()
+    assert len(activity) == 1
+    assert activity[0]['commit_id'] == created['commit_id']
+    assert activity[0]['title'] == 'Actual activity'
+    assert client.get('/api/artifacts').json() == []
+    client.delete('/api/repositories/' + created['id'])
+    assert client.get('/api/activity').json() == []

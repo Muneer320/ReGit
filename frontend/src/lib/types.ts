@@ -17,6 +17,7 @@ export interface Artifact {
   id: string
   kind: ArtifactKind
   title: string
+  created_at: string
   branches: Branch[]
   source_id: string | null
 }

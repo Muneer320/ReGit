@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [artId])
 
   const onDashboard = route.path === '/'
-  const onWorkspace = route.segments[0] === 'repositories' || route.segments[0] === 'workspace'
+  const onWorkspace = ['repositories', 'workspace', 'repo'].includes(route.segments[0])
   const onSearch = route.segments[0] === 'search'
 
   return (
@@ -141,8 +141,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>
         <div className="nav-section-label" style={{ paddingTop: 2 }}>Workspace</div>
         <NavItem icon="graph" label="Dashboard" active={onDashboard} onClick={() => navigate('/')} />
-        <NavItem icon="repo" label="Repositories" count={4} active={onWorkspace} onClick={() => navigate('/repositories')} />
-        <NavItem icon="chat" label="Feed" count={3} active={route.segments[0] === 'feed'} onClick={() => navigate('/feed')} />
+        <NavItem icon="repo" label="Repositories" active={onWorkspace} onClick={() => navigate('/repositories')} />
+        <NavItem icon="chat" label="Activity" active={route.segments[0] === 'feed'} onClick={() => navigate('/feed')} />
         <NavItem icon="search" label="Search" active={onSearch} onClick={() => navigate('/search')} />
         {artId && <ArtifactNav id={artId} />}
         <div className="sidebar-footnote">

@@ -3,7 +3,7 @@
 // for history/diff/search scenes. Safe to re-run (idempotent-ish: it always
 // creates fresh artifacts, but content addressing dedups identical commits).
 
-import { api, registryRegister } from './api'
+import { api } from './api'
 import { DEMO_DOC_TITLE, DEMO_DOC_V1, DEMO_DOC_V2, FIXTURE_BASE, FIXTURE_OURS, FIXTURE_THEIRS } from './fixtures'
 
 export interface SeedResult {
@@ -32,10 +32,7 @@ export async function seedDemoData(): Promise<SeedResult> {
   await api.commit(aid, { branch: 'research-branch', content: FIXTURE_THEIRS, message: 'theirs: reinterpret spikes as oscillations' })
   void mainHead
 
-  registryRegister([
-    { id: notes.artifact_id, title: DEMO_DOC_TITLE, kind: 'md', created_at: new Date().toISOString(), source_filename: 'notes.md' },
-    { id: aid, title: 'lr-stability.md', kind: 'md', created_at: new Date().toISOString(), source_filename: 'base.md' },
-  ])
+
 
   return { notesId: notes.artifact_id, mergeId: aid }
 }
