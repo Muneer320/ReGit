@@ -1,5 +1,7 @@
 # Provenance Spec (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Owner: Muneer. Implements ADR-12.
 
 ## The chain (edges written mechanically at each step)

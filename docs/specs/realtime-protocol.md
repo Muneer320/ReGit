@@ -1,5 +1,7 @@
 # Realtime Protocol (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Wire: WebSocket, `/collaborate/:artifact_id?branch=X&user=userA`. Two frame classes: **binary yjs protocol frames** (sync + awareness + update) and **JSON control frames** (our layer). Server = authoritative room host (pycrdt Doc per room). Client = yjs Doc + y-websocket-style handshake implemented in vendored JS.
 
 ## Rooms

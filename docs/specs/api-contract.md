@@ -1,65 +1,37 @@
-# API Contract (LOCKED before implementation)
+# Current API guide
 
-Base: `http://localhost:8377/api`. JSON in/out. Errors: `{error: {code, message}}` with HTTP status. All mutating endpoints are idempotent via content addressing or natural keys. Mock users via header `X-User: userA|userB`.
+The native base is `http://127.0.0.1:8377/api`. Errors use `{error: {code, message}}`. `X-User` selects a demo editing identity and grants no authentication. The same process serves WebSockets and the built frontend.
 
-## Artifacts
-### POST /artifacts
-Req `{kind, title, content?, source_id?}` → 201 `{artifact_id, root_commit_id}`. Creates root commit. 400 on bad kind.
+| Method | Route | Behavior |
+|---|---|---|
+| GET | `/health`, `/activity` | Readiness/version and actual recent commits |
+| GET / POST | `/repositories` | List / create a repository (`name`) |
+| GET | `/repositories/{id}?branch=main&commit=…` | Latest or historical tree |
+| GET | `/repositories/{id}/history?branch=main` | Repository commit history |
+| POST | `/repositories/{id}/branches` | `name`, `from_commit` |
+| POST | `/repositories/{id}/folders` | Version a nested folder |
+| POST | `/repositories/{id}/files` | Multipart `files`, `path`, `branch`, `base_commit`, `message`, optional `file_type` |
+| GET / PATCH | `/repositories/{id}/file` | Exact raw download (`path`, optional branch/commit/download) / edit text |
+| DELETE | `/repositories/{id}/entry` | Version a file or recursive folder deletion |
+| POST | `/repositories/{id}/file/live` | Prepare the file's branch-specific live artifact |
+| POST | `/repositories/{id}/file/publish` | Pin its saved live version in a repository snapshot |
+| DELETE | `/repositories/{id}` | Tombstone repository |
+| GET / POST | `/artifacts` | Actual typed artifacts / create an artifact |
+| GET / DELETE | `/artifacts/{id}` | Read / tombstone artifact |
+| POST | `/artifacts/{id}/commit` | `branch`, `content`, `message`, optional `base_commit` |
+| GET | `/artifacts/{id}/history` | Artifact history |
+| GET / POST | `/branches` | List (`artifact_id`) / create artifact branch |
+| POST | `/checkout` | `artifact_id`, branch or commit; rejects foreign commits |
+| GET | `/diff?artifact_id=…&from=…&to=…` | Prose sentence / chat message diff |
+| POST | `/merge` | Prose `artifact_id`, `ours_branch`, `theirs_branch` |
+| POST | `/merge/{id}/resolve` | Per-conflict ours/theirs/free resolutions; empty free text deletes |
+| POST | `/ingest` | Explicit typed research-source imports |
+| POST | `/search` | `query`, optional k/branch/as_of_commit/artifact_kind; k capped at 100 |
+| GET | `/provenance/at/{commit}/claims` | Ancestral explicit statements |
+| GET | `/provenance/claim/{id}`, `/provenance/artifact/{id}/sources` | Claim chain / source origins |
 
-### GET /artifacts
-Lists every artifact → `[{id, kind, title, branches: [{name, head}], source_id}]` (newest first). Powers the workspace server-side (survives page reload).
+Repository folder/edit/delete/publication bodies use `path`, `branch`, `base_commit`, `message`; text edits also supply `content`. Stale heads return 409. Upload batches are atomic at the metadata/tree boundary. Limits are 50 files, 16 MiB each, 64 MiB total for repository uploads.
 
-### GET /artifacts/:id
-→ `{id, kind, title, branches: [{name, head}], source_id}`. 404 unknown id.
+WebSocket `/api/collaborate/{artifact_id}?branch=…&user=…` accepts existing prose artifacts/branches. Binary frames use Yjs sync/awareness. JSON controls include `commit_request` with message, `presence_ping` and explicit `reset_request`; responses include committed/reset/error. One server worker is required.
 
-### DELETE /artifacts/:id
-Tombstones the artifact + detaches from workspaces. Object store untouched (immutability). → 204. 404 unknown.
-
-### POST /artifacts/:id/commit
-Req `{branch, content, message, base_commit?}` → 201 `{commit_id, parent_ids}`. Concurrency: per-artifact lock; if `base_commit` given and != branch head → 409 `{head}` (client must rebase/merge). Idempotency: identical canonical content + same parents = same commit id (dedup, returns 200 with existing id).
-
-### GET /artifacts/:id/history?branch=
-→ `[{commit_id, parents, message, author, author_date}]` newest-first DAG walk.
-
-## Branches
-### POST /branches
-Req `{artifact_id, name, from_commit?}` (default: head of artifact's default branch) → 201 `{name, head}`.
-
-### GET /branches?artifact_id=
-→ `[{name, head_commit_id}]`.
-
-### POST /checkout
-Req `{artifact_id, branch, commit?}` → `{content, commit_id}`. Read-only; never moves refs.
-
-## Diff
-### GET /diff?artifact_id=&from=&to=
-→ `{kind, changes: [Change]}` per diff-spec.md. `from`/`to` are commit ids. 400 if same; 404 unknown commit.
-
-## Merge
-### POST /merge
-Req `{artifact_id, ours_branch, theirs_branch}` → 201 `{merge_id, state: clean|conflicts, conflicts: [...], preview_text}`. `clean` auto-creates result commit (2 parents) and advances ours_branch. `conflicts` persists pending Merge; no refs move.
-
-### POST /merge/:id/resolve
-Req `{resolutions: [{conflict_id, resolution, resolved_text?}]}` → 200 `{result_commit_id}`. 409 if already resolved; 400 if unresolved conflicts remain.
-
-## Ingestion
-### POST /ingest (multipart file + `type` field: markdown|chatgpt|claude|pdf|codebase)
-→ 201 `{source_id, artifact_ids: [...], warnings: []}`. Parse failures: 422 with per-file message; image-only PDF → 422 `PDF_NOT_EXTRACTABLE`. Idempotent: re-ingesting identical canonical content dedups blobs (same ids returned).
-
-## Retrieval
-### POST /search
-Req `{query, k?=5, branch?, as_of_commit?, artifact_kind?}` → `{results: [SearchResult]}` (cited per data-model). 400 empty query.
-
-## Provenance
-### GET /provenance/claim/:id → `{claim, chain: [{kind, id, snippet}]}`
-### GET /provenance/artifact/:id/sources → `[{source, via_commits}]`
-### GET /provenance/at/:commit_id/claims → `[Claim]` (ancestry-filtered — the "what was known at X" query)
-
-## Realtime
-### WS /collaborate/:artifact_id?branch=&user=
-Binary yjs sync + awareness frames (see realtime-protocol.md). JSON control frames: `{type:"commit_request", message}` → server commits live doc (lock) → `{type:"committed", commit_id}` broadcast to room.
-
-## Concurrency behavior summary
-- Artifact commits: serialized per artifact (asyncio lock); stale-base writes → 409.
-- Ref moves: single UPDATE guarded by expected head (compare-and-swap).
-- Merge creation: serialized per artifact pair; duplicate pending merges return the existing merge id.
+See [the runnable smoke script](../../scripts/smoke_demo.py) for exact HTTP and real WebSocket examples. The older ADR/spec files describe original design goals; this guide and the current implementation define the maintained demo scope.

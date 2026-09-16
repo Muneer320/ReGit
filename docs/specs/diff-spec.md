@@ -1,5 +1,7 @@
 # Diff Spec (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Owner: Muneer. Implements ADR-04. ALL differs emit the same Change schema (data-model.md). Determinism is contractual: same inputs → byte-identical JSON (pytest asserts exact output on fixtures).
 
 ## Prose (md/txt) — sentence/paragraph alignment

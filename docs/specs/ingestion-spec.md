@@ -1,5 +1,7 @@
 # Ingestion Spec (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Owner: Amrit + AI (adapters). Rule: **parse differently per format, canonicalize per type, never flatten to one string.**
 
 ## Adapters

@@ -1,5 +1,7 @@
 # ADR-11: Retrieval
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 - **Status: LOCKED** · Owner: Amrit (pipeline integration) + Muneer (version/provenance filter semantics)
 
 ## Decision

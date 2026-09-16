@@ -1,5 +1,7 @@
 # ADR-08: Frontend stack
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 - **Status: LOCKED (updated for React)** · Owner: Amrit + AI
 
 ## Decision (REVISED — supersedes the original vanilla-JS choice)

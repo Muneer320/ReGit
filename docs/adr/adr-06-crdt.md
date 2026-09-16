@@ -1,5 +1,7 @@
 # ADR-06: Concurrency — CRDT choice
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 - **Status: LOCKED** · Owner: Muneer · **SUPERSEDES flash draft (which chose abandoned y-py)**
 
 ## Context / Problem

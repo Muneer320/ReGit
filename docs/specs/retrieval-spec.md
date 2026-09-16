@@ -1,5 +1,7 @@
 # Retrieval Spec (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Owner: Amrit (integration), Muneer (filters). Implements ADR-11. NOT a RAG chatbot — no answer synthesis; cited evidence only.
 
 ## Pipeline (stages all visible in code and in the demo's printed trace)

@@ -1,5 +1,7 @@
 # Merge Spec (LOCKED)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 Owner: Muneer. Implements ADR-05. The live merge conflict is judge-ask #1 — this spec's fixtures make it deterministic.
 
 ## 3-way prose merge — algorithm of record

@@ -1,5 +1,7 @@
 # ADR-05: Merge Algorithm (3-way, sentence-level for prose)
 
+> Historical design notes. Goals, benchmarks and implementation-status labels below are not current verification. See the [maintained documentation index](../README.md) for the runnable demo and supported scope.
+
 - **Status: LOCKED** · Owner: Muneer · This is the ONE deep stretch (engine + conflict UI)
 
 ## Context / Problem

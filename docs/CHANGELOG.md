@@ -1,5 +1,15 @@
 # ReGit Changelog
 
+## Unreleased — maintained local workspace
+
+- Versioned repository tree snapshots, nested folders, mixed file uploads, exact historical downloads and isolated branches.
+- Real workspace/activity data, explicit backend errors and removal of local mock merge/search/diff engines and artifact registry.
+- Live prose UI with bidirectional updates, presence, persisted CRDT identities/drafts, guarded commits, explicit reset and file-version publication.
+- Transactional prose claims, message-level chat diff, historical keyword reconstruction and deleted-item filtering.
+- UTF-8 portability, serialized/nested object-store transactions, cross-artifact commit guards, stale merge protection and empty conflict deletion.
+- Lightweight optional vector dependencies, locked security updates, reproducible Docker/browser/restart smoke checks and Linux/Windows/frontend CI.
+- Current team/prototype documentation replaces unsupported production/performance claims. Earlier entries below remain historical implementation notes.
+
 ## 2026-08-22 — Versioning DAG layer + prose alignment spine (H1/H2/H4 reference implementation)
 
 No specs were rewritten; these notes record spec-vs-code interpretations and

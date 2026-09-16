@@ -1,34 +1,14 @@
-# Demo Script (LOCKED) — a technical story, not a dashboard tour
+# Reproducible local demo
 
-## §0 The 5 killer differentiators (anchor every scene)
-1. **Canonical identity** — re-exported chat → SAME commit id (byte noise, semantic identity).
-2. **One alignment engine** powers diff, merge, AND delta reindex (deterministic, no LLM).
-3. **Sentence-level 3-way merge** with real conflict records — conflicts are claims, not line soup.
-4. **CRDT-live drafts become immutable DAG commits** — two layers, each doing what it's good at.
-5. **Retrieval knows history** — cited hits with introduced-in-commit + source; "what did we know at X" filter.
+Start `docker compose -p regit-demo up --build --wait --wait-timeout 180` at the root and open http://127.0.0.1:8377.
 
-## Setup (pre-demo checklist)
-Fresh `data/` via `scripts/reset_demo.sh`; server on :8377; two browser tabs logged as userA/userB; terminal with `gr` + scripts; `GR_AUTHOR_DATE` pinned; backup video cued.
+1. Create a repository named Research notes. Create `notes/experiments`, open both folder levels, and upload a small Markdown file plus ordinary JSON or an image. Raw files remain downloadable; ordinary JSON uses text parsing in Auto mode.
+2. Edit the Markdown file and commit. Reload, create an experiment branch, edit again and switch back to main. Pick an older Revision and verify its download differs from the current version.
+3. Open Live collaboration on the text file in two isolated browser sessions; choose userB in the second session. Type on both sides and check presence. Commit from live, then Publish live file version. Reload to see the repository's pinned text. Draft reset affects all collaborators and requires an explicit confirmation.
+4. Return to the workspace and Load merge example. Open lr-stability.md, choose Merge prose, compare main/research-branch and resolve the conflict. View history: the result has two parents. Search for a term in the imported notes. Activity contains actual commits.
 
-## Scenes (5 minutes, rehearsed, each beat <30s provable)
+Automate API/WebSocket checks with `docker compose -p regit-demo exec -T regit /app/.venv/bin/python /app/scripts/smoke_demo.py --live --state-out /data/.smoke-state.json`. With frontend npm dependencies and Chrome installed, run `node frontend/smoke.mjs` for the real two-browser flow. `CHROME_BIN` overrides executable discovery.
 
-**S1 Research (45s).** `POST /api/ingest` with each file → ChatGPT export + Claude export + PDF + notes.md load as 4 typed artifacts. *Beat:* show chat artifact = message list with roles, NOT a string. Show the ChatGPT re-export (different ids/timestamps) → **same commit id**. "Canonical identity: byte noise, same object."
+Restart the container (`docker compose -p regit-demo restart regit`), wait for health (`docker compose -p regit-demo up --wait --wait-timeout 180`) and verify with `docker compose -p regit-demo exec -T regit /app/.venv/bin/python /app/scripts/smoke_demo.py --live --verify-state /data/.smoke-state.json`. This checks historical/raw/branch file bytes and recovers/commits a previously uncommitted live draft.
 
-**S2 Versioning (30s).** Edit notes.md in tab A (change a claim sentence), commit with message. `GET /api/artifacts/{id}/history` → chain; `gr verify` → hashes recomputed live. "Immutable, content-addressed, tamper-evident."
-
-**S3 Semantic diff (45s).** `GET /api/diff?from=&to=` on the edit: sentences aligned, the edited claim shown as ONE edited sentence; reflowed paragraph → zero changes. Side-by-side: `git diff` on the same file shows line noise. Code diff on fixture: `renamed: compute_stats → compute_statistics`, one body modified — comment churn invisible. "No LLM. An alignment engine we own."
-
-**S4 Branching (20s).** Fork `claims-review` branch at HEAD. Two research directions visible in branch list.
-
-**S5 Merge conflict (60s, CLIMAX 1).** Tab A (main) edits sentence 2; tab B (claims-review) edits sentence 2 differently; both commit. POST /merge → **conflict card**: base/ours/theirs of THE SENTENCE. Resolve via free edit → merge commit → `GET /api/artifacts/{id}/history` shows the 2-parent merge commit. "Conflicts are claims, not line markers."
-
-**S6 Collaboration (45s).** Both tabs on same artifact+branch: live co-typing, presence chips, colored carets, independent undo. `commit_request` from tab B → both histories update. "CRDT absorbs typing races; the DAG absorbs research disagreements."
-
-**S7 Provenance (30s).** Click a claim in notes.md → chain: claim ← commit ← version ← "ChatGPT export, message 14, assistant". "Every claim is traceable — mechanically, not by an LLM's say-so."
-
-**S8 Temporal retrieval (45s, CLIMAX 2).** Search "gradient descent instability" → cited hits (artifact, branch, introduced-in-commit, source). Toggle `as_of_commit` = last week's commit → result set visibly shrinks to what we knew then. "Retrieval that understands research history."
-
-**Close (15s).** "Git was designed for code. We asked what it would look like designed for research: typed artifacts, canonical identity, sentence-level merge, provenance as a primitive, version-aware retrieval. Next build: the full visual provenance graph + multi-agent editing branches."
-
-## Fallbacks (rehearsed)
-Frontend dies → same scenes via `gr` CLI + `scripts/reindex.py` (offline). WS dies → `scripts/reindex.py` + CRDT convergence is proven in `tests/unit/test_collab.py` (shuffle replay) — point a judge at the live `pytest` output. Embeddings die → FTS5 keyword mode with degraded banner (handled in retrieval). Everything dies → live `pytest tests/` run as the depth proof (the tests ARE the engine's proof).
+All smoke records are synthetic and retained for restart verification. Stop the stack with `docker compose -p regit-demo stop`; preserve the named volume/project name. The old hosted frontend is not the integrated backend demo. No video is required to run these checks.
