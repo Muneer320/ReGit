@@ -106,6 +106,8 @@ def write_claims(store, artifact_id: str, commit_id: str, claims: list[str], sou
     for text in claims:
         clm_id = ids_mod.new_id("clm_")
         with store._tx() as db:
+            if db.execute("SELECT 1 FROM claims WHERE commit_id=? AND text=?", (commit_id, text)).fetchone():
+                continue
             db.execute(
                 "INSERT INTO claims(id, text, artifact_id, commit_id, sid, created_at) VALUES (?,?,?,?,?,?)",
                 (clm_id, text, artifact_id, commit_id, None, _now()),

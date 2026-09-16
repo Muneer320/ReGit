@@ -90,18 +90,20 @@ export function bindTextareaToYText(
 export function simpleDiff(
   oldText: string,
   newText: string,
-  caret?: number,
+  _caret?: number,
 ): { index: number; deleteLen: number; insert: string } {
   if (oldText === newText) return { index: 0, deleteLen: 0, insert: '' }
-  const c = caret ?? firstDifference(oldText, newText)
-  let start = Math.min(c, oldText.length, newText.length)
-  while (start > 0 && oldText[start - 1] === newText[start - 1]) start--
+  let start = firstDifference(oldText, newText)
+  const splitsPair = (text: string, index: number) => index > 0 && index < text.length &&
+    /[\uD800-\uDBFF]/.test(text[index - 1]) && /[\uDC00-\uDFFF]/.test(text[index])
+  if (splitsPair(oldText, start) || splitsPair(newText, start)) start--
   let endO = oldText.length
   let endN = newText.length
   while (endO > start && endN > start && oldText[endO - 1] === newText[endN - 1]) {
     endO--
     endN--
   }
+  if (splitsPair(oldText, endO) || splitsPair(newText, endN)) { endO++; endN++ }
   return { index: start, deleteLen: endO - start, insert: newText.slice(start, endN) }
 }
 

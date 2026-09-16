@@ -2,7 +2,7 @@
 import type { Artifact, CommitInfo, DiffResponse, IngestResponse, IngestType, MergeResponse,
   RepositoryEntry, Resolution, ResolveResponse, SearchResult } from './types'
 
-export const API_BASE = (import.meta.env.VITE_API_BASE as string) || '/api'
+export const API_BASE = (import.meta.env?.VITE_API_BASE as string) || '/api'
 
 export class ApiError extends Error {
   status: number

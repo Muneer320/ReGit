@@ -40,6 +40,7 @@ export class CollabClient {
   private lastStatus: CollabStatus = 'disconnected'
   private retry = 0
   private closedByUs = false
+  private retryTimer: number | undefined
   private events: CollabEvents
 
   constructor(artifactId: string, branch: string, user: string, events: CollabEvents = {}) {
@@ -52,7 +53,14 @@ export class CollabClient {
       user,
       color: user === 'userB' ? '#7aa2f7' : '#4ade80',
     })
-    this.awareness.on('update', () => this.broadcastAwareness())
+    this.awareness.on('update', (_changes: unknown, origin: unknown) => { if (origin !== this) this.broadcastAwareness() })
+    this.doc.on('update', (update, origin) => {
+      if (origin === this) return
+      const frame = encoding.createEncoder()
+      encoding.writeVarUint(frame, MESSAGE_SYNC)
+      syncProtocol.writeUpdate(frame, update)
+      this.sendBinary(encoding.toUint8Array(frame))
+    })
   }
 
   get ytext(): Y.Text {
@@ -80,13 +88,16 @@ export class CollabClient {
       this.sendBinary(encoding.toUint8Array(enc))
       this.broadcastAwareness()
     }
-    ws.onmessage = (ev) => this.onMessage(ev.data)
+    ws.onmessage = (ev) => {
+      try { this.onMessage(ev.data) } catch { this.events.onError?.('PROTOCOL', 'Invalid collaboration frame.') }
+    }
     ws.onclose = () => {
+      if (this.ws !== ws) return
       this.setStatus('disconnected')
       this.ws = null
       if (!this.closedByUs && this.retry < 6) {
         // Reconnect with backoff; sync step 1 heals any missed updates.
-        window.setTimeout(() => this.connect(), Math.min(800 * 2 ** this.retry++, 10000))
+        this.retryTimer = window.setTimeout(() => this.connect(), Math.min(800 * 2 ** this.retry++, 10000))
       }
     }
     ws.onerror = () => {
@@ -100,6 +111,7 @@ export class CollabClient {
 
   disconnect() {
     this.closedByUs = true
+    window.clearTimeout(this.retryTimer)
     try {
       this.ws?.close()
     } catch {
@@ -108,6 +120,8 @@ export class CollabClient {
     this.ws = null
     this.setStatus('disconnected')
   }
+
+  destroy() { this.disconnect(); this.awareness.destroy(); this.doc.destroy() }
 
   /** Ask the server to snapshot the live doc into an immutable DAG commit. */
   requestCommit(message: string) {

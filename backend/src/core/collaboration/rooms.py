@@ -12,6 +12,7 @@ crdt_ops op log for the room is replayed (deterministic).
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 from datetime import UTC, datetime
@@ -19,7 +20,7 @@ from typing import Any
 
 import pycrdt
 
-from ..objects.store import ObjectStore
+from ..objects.store import ObjectStore, RefConflictError
 from .ops import OpLog, replay_text
 
 TEXT_KEY = "content"
@@ -60,6 +61,7 @@ class LiveRoom:
     def __init__(self, artifact_id: str, branch: str, state: bytes | None = None) -> None:
         self.artifact_id = artifact_id
         self.branch = branch
+        self.base_commit: str | None = None
         self.room = f"{artifact_id}:{branch}"
         self.doc = pycrdt.Doc()
         self._text = pycrdt.Text()
@@ -225,6 +227,23 @@ class CollabHub:
         the head blob or the op log changed first: ops apply idempotently.
         """
         head = store.head(room.branch, room.artifact_id)
+        saved = store.db.execute("SELECT state,base_commit FROM crdt_documents WHERE room=?", (room.room,)).fetchone()
+        if saved is not None:
+            room.doc.apply_update(bytes(saved[0]))
+            room.base_commit = saved[1]
+            if head != room.base_commit:
+                previous = store.db.execute("SELECT root_hash FROM commits WHERE id=?", (room.base_commit,)).fetchone()
+                previous_text = store.get_blob(previous[0]).decode("utf-8") if previous else ""
+                if room.text() == previous_text:
+                    # A clean live draft can follow a newer REST commit. Never
+                    # replace a pending draft that differs from its base.
+                    room.base_commit = head
+                    latest = store.db.execute("SELECT root_hash FROM commits WHERE id=?", (head,)).fetchone()
+                    if latest:
+                        room.set_text(store.get_blob(latest[0]).decode("utf-8"))
+                    persist_room(store, room)
+            return
+        room.base_commit = head
         seed = ""
         if head is not None:
             row = store.db.execute(
@@ -241,6 +260,8 @@ class CollabHub:
             "SELECT op FROM crdt_ops WHERE room=? ORDER BY seq", (room.room,)
         ).fetchall():
             room.apply_update(bytes(op))
+
+        persist_room(store, room)
 
     def active_rooms(self) -> list[str]:
         return sorted(self._rooms)
@@ -271,14 +292,24 @@ async def commit_live(hub: CollabHub, store: ObjectStore, room: LiveRoom,
         text = room.text()
         kind = _artifact_kind(store, room.artifact_id)
         head = store.head(room.branch, room.artifact_id)
+        if head != room.base_commit:
+            raise RefConflictError("Branch changed outside this live draft. Your draft is preserved; reconcile it with the newer version before committing.")
         parents = [head] if head else []
         root_hash = store.put_blob(kind, text.encode("utf-8"))
         author_date = pinned_author_date(store, parents)
-        return store.commit(
+        committed = store.commit(
             parents, root_hash, room.artifact_id, message, author,
             branch=room.branch, expected_head=parents[0] if parents else None,
             kind=kind, author_date=author_date,
         )
+        room.base_commit = committed
+        persist_room(store, room)
+        from ...retrieval.indexer import get_indexer
+        try:
+            get_indexer(store).reindex(committed, branch=room.branch)
+        except Exception:
+            logging.exception("retrieval indexing failed for live commit %s", committed)
+        return committed
 
 
 def _artifact_kind(store: ObjectStore, artifact_id: str) -> str:
@@ -295,6 +326,9 @@ def rebuild_room_text(store: ObjectStore, artifact_id: str, branch: str) -> str:
     Pure function used by scripts/replay-style tooling and tests: no room
     object, no network — just the store.
     """
+    saved = store.db.execute("SELECT state FROM crdt_documents WHERE room=?", (CollabHub.room_key(artifact_id, branch),)).fetchone()
+    if saved:
+        return LiveRoom(artifact_id, branch, state=bytes(saved[0])).text()
     head = store.head(branch, artifact_id)
     seed = ""
     if head is not None:
@@ -314,3 +348,9 @@ def rebuild_room_text(store: ObjectStore, artifact_id: str, branch: str) -> str:
         ).fetchall()
     ]
     return replay_text(updates, seed=seed)
+
+def persist_room(store: ObjectStore, room: LiveRoom) -> None:
+    """Preserve CRDT identities as well as text across room/process restarts."""
+    with store._tx() as db:
+        db.execute("INSERT OR REPLACE INTO crdt_documents(room,state,base_commit) VALUES (?,?,?)",
+                   (room.room, room.doc.get_update(), room.base_commit))

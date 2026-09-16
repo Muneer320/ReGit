@@ -40,3 +40,5 @@ CREATE TRIGGER IF NOT EXISTS objects_no_update BEFORE UPDATE ON objects BEGIN SE
 CREATE TRIGGER IF NOT EXISTS objects_no_delete BEFORE DELETE ON objects BEGIN SELECT RAISE(ABORT,'objects immutable'); END;
 CREATE TRIGGER IF NOT EXISTS commits_no_update BEFORE UPDATE ON commits BEGIN SELECT RAISE(ABORT,'commits immutable'); END;
 CREATE TRIGGER IF NOT EXISTS commits_no_delete BEFORE DELETE ON commits BEGIN SELECT RAISE(ABORT,'commits immutable'); END;
+
+CREATE TABLE IF NOT EXISTS crdt_documents(room TEXT PRIMARY KEY, state BLOB NOT NULL, base_commit TEXT);

@@ -57,9 +57,9 @@ function NavItem({
   onClick: () => void
 }) {
   return (
-    <button className={`nav-item ${active ? 'active' : ''}`} onClick={onClick}>
+    <button className={`nav-item ${active ? 'active' : ''}`} aria-label={label} title={label} onClick={onClick}>
       <Icon name={icon} />
-      {label}
+      <span className="nav-label">{label}</span>
       {count !== undefined && <span className="nav-count">{count}</span>}
     </button>
   )

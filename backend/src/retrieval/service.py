@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections import deque
 
@@ -315,7 +316,7 @@ def search(store, query: str, k: int = 5, branch: str | None = None,
     svc = _SERVICES.get(key)
     if svc is None or svc.store is not store:
         try:
-            vector = get_vector_store(store)
+            vector = get_vector_store(store) if os.environ.get("GR_ENABLE_VECTORS") == "1" else None
         except Exception:  # defensive: never fail search on vector init
             vector = None
         svc = SearchService(store, vector)

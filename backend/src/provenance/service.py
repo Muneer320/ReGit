@@ -13,6 +13,35 @@ from __future__ import annotations
 from collections import deque
 
 
+def capture_commit(store, commit_id: str) -> None:
+    """Capture explicit prose claims in the same transaction as a new commit."""
+    from ..core.ids import new_id
+    from ..ingestion.parsers.base import extract_claims
+
+    row = store.db.execute(
+        "SELECT c.artifact_id,c.root_hash,a.kind,a.source_id,c.author_date "
+        "FROM commits c JOIN artifacts a ON a.id=c.artifact_id WHERE c.id=?", (commit_id,),
+    ).fetchone()
+    if row is None:
+        return
+    aid, root, kind, source_id, created = row
+    with store._tx() as db:
+        db.execute('INSERT OR IGNORE INTO provenance_edges VALUES (?,?,?,?,?,?,?)',
+                   (new_id('pe_'), 'artifact', aid, 'version', commit_id, 'has_version', created))
+        if kind not in ('md', 'txt'):
+            return
+        for text in dict.fromkeys(extract_claims(store.get_blob(root).decode('utf-8', 'replace'))):
+            existing = db.execute('SELECT id FROM claims WHERE commit_id=? AND text=?', (commit_id, text)).fetchone()
+            cid = existing[0] if existing else new_id('clm_')
+            if not existing:
+                db.execute('INSERT INTO claims VALUES (?,?,?,?,?,?)', (cid, text, aid, commit_id, None, created))
+            db.execute('INSERT OR IGNORE INTO provenance_edges VALUES (?,?,?,?,?,?,?)',
+                       (new_id('pe_'), 'commit', commit_id, 'claim', cid, 'states', created))
+            if source_id:
+                db.execute('INSERT OR IGNORE INTO provenance_edges VALUES (?,?,?,?,?,?,?)',
+                           (new_id('pe_'), 'claim', cid, 'source', source_id, 'derived_from', created))
+
+
 def ancestors(store, commit_id: str) -> set[str]:
     """All commits reachable via parent edges from commit_id (inclusive)."""
     parents: dict[str, list[str]] = {}

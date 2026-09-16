@@ -171,19 +171,27 @@ async def _on_binary(hub: CollabHub, room: LiveRoom, store: ObjectStore,
                 if update not in _EMPTY:
                     new = room.apply_update(update, client_id=user)
                     if new and store is not None:
-                        persist_op(store, room.room, update, user)
+                        from ..core.collaboration.rooms import persist_room
+                        with store._tx():
+                            persist_op(store, room.room, update, user)
+                            persist_room(store, room)
                         # Relay only newly applied updates. Duplicate/out-of-order
                         # replays are already represented in the room state and
                         # must not create peer churn.
                         await _broadcast_bytes(room, ws, frame)
-                    return True
+                return True
             return False  # unknown sync subtype -> 4003
         if mtype == YMessageType.AWARENESS:
             payload = read_message(frame[1:])
             for _cid, state in _parse_awareness_payload(payload):
+                if not isinstance(state, dict):
+                    continue
+                presence = state.get("user", user)
+                identity = presence.get("user", user) if isinstance(presence, dict) else presence
+                color = presence.get("color") if isinstance(presence, dict) else state.get("color")
                 room.set_awareness(
-                    str(state.get("user", user)),
-                    {"user": state.get("user", user), "color": state.get("color"),
+                    str(identity),
+                    {"user": str(identity), "color": color,
                      "cursor": state.get("cursor")},
                     frame=frame,
                 )

@@ -173,6 +173,8 @@ class ObjectStore:
                     (cid, p),
                 )
             self._cas_advance(db, branch, artifact_id, cid, expected_head)
+            from ...provenance.service import capture_commit
+            capture_commit(self, cid)
         return cid
 
     def _cas_advance(self, db: sqlite3.Connection, branch: str,

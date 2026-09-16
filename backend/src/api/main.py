@@ -599,6 +599,12 @@ def diff(
         old_text = _content(store, kind, from_commit)
         new_text = _content(store, kind, to)
         return {"kind": kind, "changes": align.diff_prose(old_text, new_text, artifact_id)}
+    if kind == "chat":
+        import json
+        from ..retrieval.indexer import _diff_chat
+        old = json.loads(_content(store, kind, from_commit))
+        new = json.loads(_content(store, kind, to))
+        return {"kind": kind, "changes": _diff_chat(old.get("messages", []), new.get("messages", []), artifact_id)}
     raise NotImplementedError(
         f"H2/H6: diff engine for kind '{kind}' pending — chat/pdf/codebase (diff-spec.md)"
     )
@@ -639,6 +645,7 @@ def merge(
             f"merge {body.theirs_branch} into {body.ours_branch}", user,
             branch=body.ours_branch, expected_head=ours_head, kind=kind,
         )
+        _index_commit(store, result_commit, body.ours_branch)
         return {
             "merge_id": "", "state": "clean", "conflicts": [],
             "preview_text": result.merged_text, "result_commit_id": result_commit,
@@ -741,6 +748,7 @@ def resolve_merge(
         [ours, theirs], merged_root, _aid,
         f"merge resolve {merge_id}", user, branch=branch_name, expected_head=ours, kind=kind,
     )
+    _index_commit(store, result_commit, branch_name)
     # Persist resolutions + finalize the pending Merge row.
     with store._tx() as db:
         for c_conf in conflicts:

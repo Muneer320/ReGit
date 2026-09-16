@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -426,9 +427,11 @@ def get_vector_store(store, data_dir: str | None = None) -> VectorStore:
     return _VECTOR_CACHE[key]
 
 
-def get_indexer(store, enable_vectors: bool = True) -> Indexer:
+def get_indexer(store, enable_vectors: bool | None = None) -> Indexer:
     """Cached Indexer for the store; vectors enabled when possible."""
-    key = _store_key(store)
+    if enable_vectors is None:
+        enable_vectors = os.environ.get("GR_ENABLE_VECTORS") == "1"
+    key = _store_key(store) + f":vectors={enable_vectors}"
     if key in _INDEXER_CACHE:
         return _INDEXER_CACHE[key]
     vector = None

@@ -945,7 +945,7 @@ button.dashboard-stat-card:hover { border-color: var(--border-strong); backgroun
   }
   .brand .tagline,
   .sidebar .nav-section-label,
-  .sidebar .nav-item:not(.active) {
+  .sidebar .nav-label {
     display: none;
   }
   .sidebar { padding: 10px 6px; }
@@ -957,7 +957,6 @@ button.dashboard-stat-card:hover { border-color: var(--border-strong); backgroun
   .topbar { gap: 8px; padding: 0 10px; }
   .topbar .crumb { max-width: 34vw; }
   .user-switch button { padding-inline: 6px; }
-  .user-switch button:not(.active) { display: none; }
   .page { padding: 14px 12px 44px; }
   .page-head { align-items: flex-start; }
   .page-head .btn-row { width: 100%; }

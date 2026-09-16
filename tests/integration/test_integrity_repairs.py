@@ -107,3 +107,28 @@ def test_checkout_and_diff_cannot_mix_commits_from_other_artifacts(client):
     assert client.post('/api/checkout', json={'artifact_id': artifact, 'commit': other_root}).status_code == 404
     assert client.get('/api/diff', params={'artifact_id': artifact, 'from': root, 'to': other_root}).status_code == 404
     assert client.post('/api/branches', json={'artifact_id': artifact, 'name': 'foreign', 'from_commit': other_root}).status_code == 400
+
+
+def test_rest_commits_capture_updated_claims_without_duplicate_rows(client):
+    artifact, root = create(client, 'claim: Initial evidence.')
+    later = commit(client, artifact, 'main', 'claim: Updated evidence.')
+    earlier = client.get(f'/api/provenance/at/{root}/claims').json()
+    current = client.get(f'/api/provenance/at/{later}/claims').json()
+    assert [claim['text'] for claim in earlier] == ['Initial evidence.']
+    assert {claim['text'] for claim in current} == {'Initial evidence.', 'Updated evidence.'}
+    assert len(current) == 2
+
+
+def test_chat_diff_reports_message_changes(client):
+    import json
+    before = {'version': 1, 'kind': 'chat', 'messages': [{'ord': 0, 'role': 'assistant', 'text': 'Original answer.'}]}
+    created = client.post('/api/artifacts', json={'kind': 'chat', 'title': 'Conversation', 'content': json.dumps(before)}).json()
+    aid, root = created['artifact_id'], created['root_commit_id']
+    after = {'version': 1, 'kind': 'chat', 'messages': [{'ord': 0, 'role': 'assistant', 'text': 'Revised answer.'}]}
+    latest = commit(client, aid, 'main', json.dumps(after))
+    response = client.get('/api/diff', params={'artifact_id': aid, 'from': root, 'to': latest})
+    assert response.status_code == 200, response.text
+    assert response.json()['kind'] == 'chat'
+    changes = response.json()['changes']
+    assert any(item.get('old_text') == 'Original answer.' for item in changes)
+    assert any(item.get('new_text') == 'Revised answer.' for item in changes)
