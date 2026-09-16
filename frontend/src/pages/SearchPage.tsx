@@ -222,7 +222,7 @@ export function SearchPage() {
       {!results && !error && !searching && (
         <div className="demo-hint" style={{ marginTop: 14 }}>
            <span>
-            Search runs against the retrieval engine when available; otherwise a local index over your real artifacts keeps the demo honest (marked “demo adapter”).
+            Search returns indexed passages with their source and commit citations.
           </span>
         </div>
       )}
