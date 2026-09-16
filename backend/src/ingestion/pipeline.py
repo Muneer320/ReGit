@@ -89,14 +89,14 @@ def commit_roots(store, outcome: IngestOutcome, author: str, message: str = "roo
             [], art.root_hash, art.artifact_id, message, author, kind=art.kind
         )
         art.commit_id = cid
-        store.db.execute(
-            "INSERT OR IGNORE INTO provenance_edges("
-            "id, from_kind, from_id, to_kind, to_id, relation, created_at) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (ids_mod.new_id("pe_"), "artifact", art.artifact_id, "version", cid,
-             "has_version", _now()),
-        )
-        store.db.commit()
+        with store._tx() as db:
+            db.execute(
+                "INSERT OR IGNORE INTO provenance_edges("
+                "id, from_kind, from_id, to_kind, to_id, relation, created_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (ids_mod.new_id("pe_"), "artifact", art.artifact_id, "version", cid,
+                 "has_version", _now()),
+            )
         if art.claims:
             write_claims(store, art.artifact_id, cid, art.claims, outcome.source_id)
 

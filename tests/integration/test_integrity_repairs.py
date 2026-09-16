@@ -99,3 +99,11 @@ def test_clean_merge_cannot_overwrite_a_concurrent_commit(client, monkeypatch):
     response = client.post('/api/merge', json={'artifact_id': artifact, 'ours_branch': 'main', 'theirs_branch': 'feature'})
     assert response.status_code == 409, response.text
     assert store.head('main', artifact) == advanced[0]
+
+
+def test_checkout_and_diff_cannot_mix_commits_from_other_artifacts(client):
+    artifact, root = create(client, 'First artifact.')
+    _, other_root = create(client, 'Other artifact.')
+    assert client.post('/api/checkout', json={'artifact_id': artifact, 'commit': other_root}).status_code == 404
+    assert client.get('/api/diff', params={'artifact_id': artifact, 'from': root, 'to': other_root}).status_code == 404
+    assert client.post('/api/branches', json={'artifact_id': artifact, 'name': 'foreign', 'from_commit': other_root}).status_code == 400

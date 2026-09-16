@@ -566,6 +566,8 @@ def checkout(
     if row is None:
         raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {body.artifact_id}")
     commit_id = body.commit or _require_branch_head(store, body.artifact_id, body.branch)
+    if store.db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (commit_id, body.artifact_id)).fetchone() is None:
+        raise ApiError(404, "COMMIT_NOT_FOUND", "commit does not belong to this artifact")
     return {"content": _content(store, row[1], commit_id), "commit_id": commit_id}
 
 
@@ -585,9 +587,9 @@ def diff(
     if row is None:
         raise ApiError(404, "ARTIFACT_NOT_FOUND", f"unknown artifact {artifact_id}")
     kind = row[1]
-    if _root_hash(store, from_commit) is None:
+    if store.db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (from_commit, artifact_id)).fetchone() is None:
         raise ApiError(404, "COMMIT_NOT_FOUND", f"unknown commit {from_commit}")
-    if _root_hash(store, to) is None:
+    if store.db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (to, artifact_id)).fetchone() is None:
         raise ApiError(404, "COMMIT_NOT_FOUND", f"unknown commit {to}")
 
     if kind in ("md", "txt"):

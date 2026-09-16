@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import tempfile
+import threading
 import zlib
 from collections import deque
 from collections.abc import Iterator
@@ -39,6 +41,8 @@ def _now_iso() -> str:
 
 class ObjectStore:
     def __init__(self, data_dir: str = "data") -> None:
+        self._lock = threading.RLock()
+        self._savepoint = 0
         self.objects_dir = Path(data_dir) / "objects"
         self.objects_dir.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(str(Path(data_dir) / "meta.db"), check_same_thread=False)
@@ -65,28 +69,45 @@ class ObjectStore:
         """One write transaction. BEGIN IMMEDIATE grabs the write lock up
         front, so two writers on the same artifact serialize and the
         read-then-CAS sequence below is race-free."""
-        self.db.execute("BEGIN IMMEDIATE")
-        try:
-            yield self.db
-        except BaseException:
-            self.db.execute("ROLLBACK")
-            raise
-        else:
-            self.db.execute("COMMIT")
+        with self._lock:
+            nested = self.db.in_transaction
+            self._savepoint += 1
+            savepoint = f"store_{self._savepoint}"
+            self.db.execute(f"SAVEPOINT {savepoint}" if nested else "BEGIN IMMEDIATE")
+            try:
+                yield self.db
+            except BaseException:
+                if nested:
+                    self.db.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                    self.db.execute(f"RELEASE SAVEPOINT {savepoint}")
+                else:
+                    self.db.execute("ROLLBACK")
+                raise
+            else:
+                self.db.execute(f"RELEASE SAVEPOINT {savepoint}" if nested else "COMMIT")
 
     def _path_for(self, oid: str) -> Path:
+        if len(oid) != 64 or any(char not in "0123456789abcdef" for char in oid):
+            raise ValueError("object identifier must be a lowercase SHA-256 digest")
         return self.objects_dir / oid[:2] / oid[2:]
 
     def put_blob(self, kind: str, data: bytes) -> str:
         """Content-addressed, deduped write. Returns the blob id."""
         oid = blob_id(kind, data)
         p = self._path_for(oid)
-        if not p.exists():
-            p.parent.mkdir(parents=True, exist_ok=True)
-            tmp = p.with_suffix(".tmp")
-            tmp.write_bytes(zlib.compress(data))
-            os.replace(tmp, p)  # atomic-ish: never a partial object
-            self.db.execute(
+        with self._tx() as db:
+            if not p.exists():
+                p.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(dir=p.parent, delete=False) as temporary:
+                    temporary.write(zlib.compress(data))
+                    temporary_path = Path(temporary.name)
+                try:
+                    os.replace(temporary_path, p)
+                finally:
+                    temporary_path.unlink(missing_ok=True)
+            # A rolled-back transaction may leave an immutable blob on disk.
+            # Register it again rather than mistaking that file for a DB row.
+            db.execute(
                 "INSERT OR IGNORE INTO objects(hash, kind, size, path) VALUES (?,?,?,?)",
                 (oid, kind, len(data), str(p)),
             )
@@ -138,7 +159,7 @@ class ObjectStore:
             if db.execute("SELECT 1 FROM objects WHERE hash=?", (root_hash,)).fetchone() is None:
                 raise ValueError(f"root object {root_hash} not in store — write blob(s) before commit")
             for p in parents:
-                if db.execute("SELECT 1 FROM commits WHERE id=?", (p,)).fetchone() is None:
+                if db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (p, artifact_id)).fetchone() is None:
                     raise ValueError(f"parent commit {p} does not exist")
             db.execute(
                 "INSERT OR IGNORE INTO commits"
@@ -164,6 +185,8 @@ class ObjectStore:
             "SELECT head FROM refs WHERE name=? AND artifact_id=?",
             (branch, artifact_id),
         ).fetchone()
+        if row is None and expected_head is not None:
+            raise RefConflictError(f"ref {branch}@{artifact_id} no longer exists")
         if row is None:  # branch create
             db.execute("INSERT INTO refs(name, artifact_id, head) VALUES (?,?,?)",
                        (branch, artifact_id, cid))
@@ -201,7 +224,7 @@ class ObjectStore:
     def create_branch(self, name: str, artifact_id: str, from_commit: str) -> None:
         """Fork: create a new ref at an existing commit (versioning-spec.md)."""
         with self._tx() as db:
-            if db.execute("SELECT 1 FROM commits WHERE id=?", (from_commit,)).fetchone() is None:
+            if db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (from_commit, artifact_id)).fetchone() is None:
                 raise ValueError(f"cannot branch from unknown commit {from_commit}")
             if db.execute(
                 "SELECT 1 FROM refs WHERE name=? AND artifact_id=?",
@@ -226,7 +249,7 @@ class ObjectStore:
             ).fetchone()
             if row is None:
                 raise ValueError(f"branch {name} does not exist for {artifact_id}")
-            if db.execute("SELECT 1 FROM commits WHERE id=?", (new_head,)).fetchone() is None:
+            if db.execute("SELECT 1 FROM commits WHERE id=? AND artifact_id=?", (new_head, artifact_id)).fetchone() is None:
                 raise ValueError(f"cannot point branch at unknown commit {new_head}")
             if row[0] == new_head:
                 return
