@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+  <title id="title">ReGit — keep the work behind the finding</title>
+  <desc id="desc">A green and blue commit graph joins a research notebook. Versioned files, shared drafts and traceable research history.</desc>
+  <rect width="1200" height="330" rx="20" fill="#0d1117"/>
+  <path d="M0 309H1200" stroke="#30363d"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="54" y="58" fill="#57c47a" font-size="13" letter-spacing="3">VERSION CONTROL FOR RESEARCH</text>
+    <text x="50" y="140" fill="#f0f6fc" font-size="72" font-weight="700">ReGit</text>
+    <text x="54" y="193" fill="#f0f6fc" font-size="28">Keep the work behind the finding.</text>
+    <text x="54" y="238" fill="#9da7b3" font-size="18">Version files. Edit together. Trace what changed.</text>
+    <text x="54" y="282" fill="#57c47a" font-size="14">IMMUTABLE SNAPSHOTS</text>
+    <text x="253" y="282" fill="#6ea0f6" font-size="14">SHARED DRAFTS</text>
+    <text x="402" y="282" fill="#b9a4f4" font-size="14">PROSE MERGE</text>
+  </g>
+  <g fill="none" stroke-width="4">
+    <path d="M755 66V265" stroke="#57c47a"/>
+    <path d="M755 103C755 139 840 122 840 157V196C840 233 755 215 755 252" stroke="#6ea0f6"/>
+  </g>
+  <g fill="#0d1117" stroke-width="4">
+    <circle cx="755" cy="77" r="9" stroke="#57c47a"/>
+    <circle cx="755" cy="160" r="9" stroke="#57c47a"/>
+    <circle cx="755" cy="251" r="9" stroke="#57c47a"/>
+    <circle cx="840" cy="166" r="9" stroke="#6ea0f6"/>
+  </g>
+  <rect x="904" y="74" width="239" height="186" rx="12" fill="#161b22" stroke="#30363d"/>
+  <g font-family="monospace" font-size="15">
+    <text x="924" y="109" fill="#f0f6fc">findings.md</text>
+    <path d="M924 128H1123" stroke="#30363d"/>
+    <text x="924" y="158" fill="#9da7b3">question → experiment</text>
+    <text x="924" y="188" fill="#57c47a">+ revised observation</text>
+    <text x="924" y="218" fill="#6ea0f6">claim → commit</text>
+  </g>
+</svg>
