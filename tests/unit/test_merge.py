@@ -15,9 +15,9 @@ from backend.src.core.merge.three_way import (
 from backend.src.core.objects.store import ObjectStore
 
 FIXTURES = Path(__file__).resolve().parents[2] / "scripts" / "fixtures"
-BASE = (FIXTURES / "merge" / "base.md").read_text()
-OURS = (FIXTURES / "merge" / "ours.md").read_text()
-THEIRS = (FIXTURES / "merge" / "theirs.md").read_text()
+BASE = (FIXTURES / "merge" / "base.md").read_text(encoding="utf-8")
+OURS = (FIXTURES / "merge" / "ours.md").read_text(encoding="utf-8")
+THEIRS = (FIXTURES / "merge" / "theirs.md").read_text(encoding="utf-8")
 
 ART = "art_01JMERGE"
 DATE = "2026-02-20T09:30:00+00:00"

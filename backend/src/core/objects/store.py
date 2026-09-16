@@ -54,7 +54,10 @@ class ObjectStore:
         IF NOT EXISTS, so this is idempotent. Schema lives in backend/src/db/
         and is the single source of truth; the store must not drift from it."""
         schema = Path(__file__).resolve().parents[2] / "db" / "schema.sql"
-        self.db.executescript(schema.read_text())
+        self.db.executescript(schema.read_text(encoding="utf-8"))
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(merges)")}
+        if "target_branch" not in columns:
+            self.db.execute("ALTER TABLE merges ADD COLUMN target_branch TEXT")
         self.db.commit()
 
     @contextmanager

@@ -293,7 +293,7 @@ def list_artifacts(store: ObjectStore = Depends(get_store)) -> list[dict]:
     frontend fell back to a localStorage registry that loses state on reload)."""
     out = []
     for _id, kind, title, source_id, _created in store.db.execute(
-        "SELECT id, kind, title, source_id, created_at FROM artifacts ORDER BY created_at DESC"
+        "SELECT id, kind, title, source_id, created_at FROM artifacts WHERE id NOT IN (SELECT artifact_id FROM tombstones) ORDER BY created_at DESC"
     ):
         branches = [
             {"name": b, "head": h}
@@ -327,9 +327,10 @@ def get_artifact(artifact_id: str, store: ObjectStore = Depends(get_store)) -> d
 
 def _repo_path(path: str) -> str:
     """Normalize a repository-relative path and reject traversal."""
-    value = (path or "").replace("\\\\", "/").strip(" /")
+    value = (path or "").replace("\\", "/").strip()
     parts = [part for part in value.split("/") if part not in ("", ".")]
-    if not parts or any(part == ".." or "\\x00" in part for part in parts):
+    if (not parts or value.startswith("/") or ":" in parts[0]
+            or any(part == ".." or "\x00" in part for part in parts)):
         raise ApiError(400, "BAD_PATH", "path must be a non-empty repository-relative path")
     return "/".join(parts)
 
@@ -631,7 +632,7 @@ def merge(
         result_commit = store.commit(
             [ours_head, theirs_head], merged_root, body.artifact_id,
             f"merge {body.theirs_branch} into {body.ours_branch}", user,
-            branch=body.ours_branch, kind=kind,
+            branch=body.ours_branch, expected_head=ours_head, kind=kind,
         )
         return {
             "merge_id": "", "state": "clean", "conflicts": [],
@@ -644,10 +645,10 @@ def merge(
     with store._tx() as db:
         db.execute(
             "INSERT INTO merges(id, artifact_id, base_commit, ours_commit, "
-            "theirs_commit, result_commit, state, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "theirs_commit, result_commit, state, created_at, target_branch) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
             (merge_id, body.artifact_id, base_commit, ours_head, theirs_head,
-             None, "conflicts", _now()),
+             None, "conflicts", _now(), body.ours_branch),
         )
         conflict_recs = []
         for c in result.conflicts:
@@ -679,13 +680,13 @@ def resolve_merge(
     store: ObjectStore = Depends(get_store),
 ) -> dict:
     mrow = store.db.execute(
-        "SELECT id, artifact_id, base_commit, ours_commit, theirs_commit, result_commit, state "
+        "SELECT id, artifact_id, base_commit, ours_commit, theirs_commit, result_commit, state, target_branch "
         "FROM merges WHERE id=?",
         (merge_id,),
     ).fetchone()
     if mrow is None:
         raise ApiError(404, "MERGE_NOT_FOUND", f"unknown merge {merge_id}")
-    _mid, _aid, _base, ours, theirs, result_commit, state = mrow
+    _mid, _aid, _base, ours, theirs, result_commit, state, saved_branch = mrow
     if result_commit is not None or state == "resolved":
         raise ApiError(409, "ALREADY_RESOLVED", "merge already resolved")
     conflicts = store.db.execute(
@@ -718,7 +719,7 @@ def resolve_merge(
         elif r.resolution == "theirs":
             resolutions[sid] = _t
         else:  # free
-            resolutions[sid] = (r.resolved_text or _o) if r.resolved_text is not None else _o
+            resolutions[sid] = r.resolved_text if r.resolved_text is not None else _o
 
     final_text = compose_final_text(result, resolutions)
     merged_root = store.put_blob(kind, final_text.encode("utf-8"))
@@ -728,10 +729,12 @@ def resolve_merge(
         "SELECT name FROM branches WHERE artifact_id=? AND head_commit_id=? LIMIT 1",
         (_aid, ours),
     ).fetchone()
-    branch_name = target_branch[0] if target_branch else None
+    branch_name = saved_branch or (target_branch[0] if target_branch else None)
+    if branch_name is None or store.head(branch_name, _aid) != ours:
+        raise ApiError(409, "STALE_MERGE", "target branch moved; start a new merge")
     result_commit = store.commit(
         [ours, theirs], merged_root, _aid,
-        f"merge resolve {merge_id}", user, branch=branch_name, kind=kind,
+        f"merge resolve {merge_id}", user, branch=branch_name, expected_head=ours, kind=kind,
     )
     # Persist resolutions + finalize the pending Merge row.
     with store._tx() as db:

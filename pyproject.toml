@@ -8,8 +8,6 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pycrdt>=0.14",
-    "chromadb",
-    "sentence-transformers",
     "pypdf",
     "tree-sitter",
     "tree-sitter-python",
@@ -19,6 +17,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+vector = [
+    "chromadb",
+    "sentence-transformers",
+]
 dev = [
     "pytest>=8",
     "pytest-asyncio",
@@ -35,6 +37,7 @@ package = false
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
+markers = ["vector: optional Chroma and embedding-model integration tests"]
 
 [tool.ruff]
 line-length = 110

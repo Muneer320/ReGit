@@ -2657,13 +2657,11 @@ name = "regit"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "chromadb" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "pycrdt" },
     { name = "pypdf" },
     { name = "python-multipart" },
-    { name = "sentence-transformers" },
     { name = "tree-sitter" },
     { name = "tree-sitter-python" },
     { name = "uvicorn", extra = ["standard"] },
@@ -2674,6 +2672,10 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+]
+vector = [
+    { name = "chromadb" },
+    { name = "sentence-transformers" },
 ]
 
 [package.dev-dependencies]
@@ -2687,7 +2689,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "chromadb" },
+    { name = "chromadb", marker = "extra == 'vector'" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx" },
     { name = "pycrdt", specifier = ">=0.14" },
@@ -2695,13 +2697,13 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-asyncio", marker = "extra == 'dev'" },
     { name = "python-multipart", specifier = ">=0.0.32" },
-    { name = "sentence-transformers" },
+    { name = "sentence-transformers", marker = "extra == 'vector'" },
     { name = "tree-sitter" },
     { name = "tree-sitter-python" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
     { name = "websockets" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["vector", "dev"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -23,7 +23,7 @@ FIXTURES = Path(__file__).resolve().parents[2] / "scripts" / "fixtures" / "merge
 def _open(data_dir: str) -> ObjectStore:
     store = ObjectStore(data_dir)
     if SCHEMA_PATH.exists():
-        store.db.executescript(SCHEMA_PATH.read_text())
+        store.db.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         store.db.commit()
     return store
 

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS tombstones(artifact_id TEXT PRIMARY KEY, deleted_at T
 CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY, name TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS workspace_members(workspace_id TEXT, artifact_id TEXT, branch_name TEXT, PRIMARY KEY(workspace_id, artifact_id, branch_name));
 CREATE TABLE IF NOT EXISTS merges(id TEXT PRIMARY KEY, artifact_id TEXT, base_commit TEXT, ours_commit TEXT, theirs_commit TEXT,
-                    result_commit TEXT, state TEXT, created_at TEXT);
+                    result_commit TEXT, state TEXT, created_at TEXT, target_branch TEXT);
 CREATE TABLE IF NOT EXISTS conflicts(id TEXT PRIMARY KEY, merge_id TEXT, sid TEXT, base_text TEXT, ours_text TEXT, theirs_text TEXT,
                        resolution TEXT, resolved_text TEXT);
 CREATE TABLE IF NOT EXISTS crdt_ops(id TEXT PRIMARY KEY, room TEXT, seq INTEGER, client_id TEXT, op BLOB, received_at TEXT);

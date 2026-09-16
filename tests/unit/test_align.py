@@ -23,10 +23,10 @@ from backend.src.core.diff.align import (
 
 FIXTURES = Path(__file__).resolve().parents[2] / "scripts" / "fixtures"
 
-BASE = (FIXTURES / "merge" / "base.md").read_text()
-OURS = (FIXTURES / "merge" / "ours.md").read_text()
-THEIRS = (FIXTURES / "merge" / "theirs.md").read_text()
-NOTES = (FIXTURES / "notes.md").read_text()
+BASE = (FIXTURES / "merge" / "base.md").read_text(encoding="utf-8")
+OURS = (FIXTURES / "merge" / "ours.md").read_text(encoding="utf-8")
+THEIRS = (FIXTURES / "merge" / "theirs.md").read_text(encoding="utf-8")
+NOTES = (FIXTURES / "notes.md").read_text(encoding="utf-8")
 
 S_BASE_P0S1 = "We observed loss spikes at lr=0.1 on the quadratic benchmark."
 S_OURS_P0S1 = (

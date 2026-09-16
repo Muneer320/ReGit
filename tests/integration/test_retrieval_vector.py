@@ -17,6 +17,8 @@ from backend.src.retrieval.indexer import Indexer
 from backend.src.retrieval.service import SearchService
 from backend.src.retrieval.vectors import VectorStore, VectorUnavailable
 
+pytestmark = pytest.mark.vector
+
 ART = "art_01JVEC"
 DATE = "2026-01-15T12:00:00+00:00"
 
