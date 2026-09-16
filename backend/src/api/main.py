@@ -55,6 +55,8 @@ from ..provenance import service as provenance
 from ..realtime import ws as realtime_ws
 from ..retrieval import indexer as retrieval_indexer
 from ..retrieval import service as retrieval
+from ..repositories.api import router as repository_router
+from ..repositories.service import RepositoryError
 
 # ---------------------------------------------------------------------------
 # Paths / defaults
@@ -87,6 +89,7 @@ def _error_response(status: int, code: str, message: str) -> JSONResponse:
 
 
 @app.exception_handler(ApiError)
+@app.exception_handler(RepositoryError)
 def _on_api_error(_req: Request, exc: ApiError) -> JSONResponse:
     return _error_response(exc.status, exc.code, exc.message)
 
@@ -882,6 +885,8 @@ async def collaborate_ws_api_alias(
 def health() -> dict:
     return {"status": "ok", "version": "0.1.0"}
 
+
+app.include_router(repository_router(get_store, get_user))
 
 if _FRONTEND.exists():
     app.mount("/", StaticFiles(directory=str(_FRONTEND), html=True), name="static")
